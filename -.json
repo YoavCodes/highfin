@@ -1,0 +1,35 @@
+{
+	"octopus": {
+		"lang": "golang",
+		"version": "1.2.1",
+		"main": "code.highf.in/chalkhq/octopus",
+		"watch": ["./go/src/code.highf.in/chalkhq/octopus"],
+		"instances": ["1:80"]
+	},
+
+	"squid": {
+		"lang": "golang",
+		"version": "1.2.1",
+		"main": "code.highf.in/chalkhq/squid",
+		"watch": ["./go/src/code.highf.in/chalkhq/squid"],
+		"instances": ["1:80"]
+	},
+
+	"shark": {
+		"lang": "golang",
+		"version": "1.2.1",
+		"main": "code.highf.in/chalkhq/shark",
+		"watch": ["./go/src/code.highf.in/chalkhq/shark"],
+		"instances": ["1:80"]
+	},
+
+	"guppy": {
+		"lang": "golang",
+		"version": "1.2.1",
+		"main": "code.highf.in/chalkhq/guppy",
+		"watch": ["./go/src/code.highf.in/chalkhq/guppy"],
+		"instances": ["1:80"]
+	}
+
+
+}

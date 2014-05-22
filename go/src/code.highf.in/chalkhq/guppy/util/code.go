@@ -18,13 +18,28 @@ func Run() {
 
 	c := time.Tick(1 * time.Second)
 	for _ = range c {
-		if isChanged() == true {
-			go runApp()
+		// watch/run all apps unless specific app is provided in commandline
+		if len(os.Args) >= 3 {
+			if app, ok := dashConfig.Apps[os.Args[2]]; ok == true {
+				if isChanged(app) == true {
+					go runApp(app)
+				}
+			} else {
+				Log(`App "` + os.Args[2] + `" is not declared in -.json`)
+				return
+			}
+		} else {
+			for j := range dashConfig.Apps {
+				app := dashConfig.Apps[j]
+				if isChanged(app) == true {
+					go runApp(app)
+				}
+			}
 		}
 	}
 }
 
-func isChanged() bool {
+func isChanged(app App) bool {
 	//Log("Hello Guppy Watch util\n")
 	// make it walk the folder tree.. if it's fast enough we can just hash it every few seconds and compare, or count the number of files.
 	// or even better start using https://github.com/howeyc/fsnotify which will become an official api in go1.4
@@ -33,9 +48,10 @@ func isChanged() bool {
 	// walk the src folder hashing every file and appending the hash to a string
 	// hash the string
 	// store in memory, repeat and compare
-	for i := 0; i < len(dashConfig.App.Watch); i++ {
 
-		_ = filepath.Walk(dashConfig.App.Watch[i], func(path string, info os.FileInfo, err error) error {
+	for i := 0; i < len(app.Watch); i++ {
+
+		_ = filepath.Walk(app.Watch[i], func(path string, info os.FileInfo, err error) error {
 
 			if err != nil {
 				Log("Can't watch " + path + ", path does not exist")
@@ -77,26 +93,26 @@ func isChanged() bool {
 	return changed
 }
 
-func runApp() {
+func runApp(app App) {
 	if cmd != nil {
 		Log("Change detected...")
 		cmd.Process.Kill()
 		cmd = nil
 	}
-	switch dashConfig.App.Lang {
+	switch app.Lang {
 	case "golang":
-		err := E("go install " + dashConfig.App.Main).Run()
+		err := E("go install " + app.Main).Run()
 		if err != nil {
 			Log("failed to install app")
 		}
-		mainSplit := strings.Split(dashConfig.App.Main, "/")
+		mainSplit := strings.Split(app.Main, "/")
 		err = E(mainSplit[len(mainSplit)-1]).Run()
 		if err != nil {
 			//Log("failed to run app", err.Error())
 		}
 	case "nodejs":
 		// this should just use the function directly instead of depending on another guppy process
-		err := E("guppy node " + dashConfig.App.Version + " " + dashConfig.App.Main).Run()
+		err := E("guppy node " + app.Version + " " + app.Main).Run()
 		if err != nil {
 			Log("failed to install app")
 		}

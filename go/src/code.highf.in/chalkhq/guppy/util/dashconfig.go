@@ -5,13 +5,16 @@ import "io"
 import "encoding/json"
 import "path/filepath"
 
+type App struct {
+	Lang    string   `json:"lang"`
+	Version string   `json:"version"`
+	Main    string   `json:"main"`
+	Watch   []string `json:"watch"`
+}
+
 type DashConfig struct {
-	App struct {
-		Lang    string   `json:"lang"`
-		Version string   `json:"version"`
-		Main    string   `json:"main"`
-		Watch   []string `json:"watch"`
-	} `json:"app"`
+	Apps map[string]App
+
 	BasePath string // absolute path to app's root directory. ie: where the -.json file is
 }
 
@@ -33,15 +36,19 @@ func GetDashConfig() DashConfig {
 	defer dashConfigFile.Close()
 
 	jsonParser := json.NewDecoder(dashConfigFile)
-	if err = jsonParser.Decode(&dashConfig); err == io.EOF || err == nil {
+	if err = jsonParser.Decode(&dashConfig.Apps); err == io.EOF || err == nil {
 	} else {
+		Log("Could not parse -.json files")
 		LogE(err)
 	}
 
 	dashConfig.BasePath, _ = filepath.Abs(parent_search)
 
-	for i := 0; i < len(dashConfig.App.Watch); i++ {
-		dashConfig.App.Watch[i], _ = filepath.Abs(parent_search + dashConfig.App.Watch[i])
+	for j := range dashConfig.Apps {
+		app := dashConfig.Apps[j]
+		for i := 0; i < len(app.Watch); i++ {
+			app.Watch[i], _ = filepath.Abs(parent_search + app.Watch[i])
+		}
 	}
 
 	//dashConfig.App.Main, _ = filepath.Abs(parent_search + dashConfig.App.Main)
