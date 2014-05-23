@@ -33,8 +33,6 @@ var (
 	paths Paths
 )
 
-// todo: why are we compiling less on the server and not the client? for javascript-less clients? but then our whole app is dead
-
 func init() {
 	var whoami bytes.Buffer
 	cmd := exec.Command("whoami")

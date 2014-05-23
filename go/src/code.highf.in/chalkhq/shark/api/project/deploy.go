@@ -38,6 +38,11 @@ func Deploy(r types.Response) {
 
 	// todo: stream into untar command
 	// save file to disk
+
+	_ = os.RemoveAll("/shark/tmp/chalkhq/highfin/dev-next")
+	_ = os.RemoveAll("/shark/tmp/chalkhq/highfin/dev-next.tar")
+	_ = os.MkdirAll("/shark/tmp/chalkhq/highfin/dev-next", 777)
+
 	dst, err := os.Create("/shark/tmp/chalkhq/highfin/dev-next.tar")
 
 	defer dst.Close()
@@ -54,10 +59,17 @@ func Deploy(r types.Response) {
 		return
 	}
 
-	_ = exec.Command(`tar`, `-x`, `-C`, `/shark/tmp/chalkhq/highfin/dev-next`, `-f`, `/shark/tmp/chalkhq/highfin/dev-next.tar`).Run()
+	cmd := exec.Command(`tar`, `-x`, `-C`, `/shark/tmp/chalkhq/highfin/dev-next`, `-f`, `/shark/tmp/chalkhq/highfin/dev-next.tar`)
+	cmd.Stderr = os.Stderr
+	err = cmd.Run()
+	if err != nil {
+		r.AddError("error extracting tar file")
+		r.Kill(500)
+		return
+	}
 
 	/// build the image
-	cmd := exec.Command(`docker`, `build`, `-t`, `chalkhq_highfin_dev-next`, `/shark/tmp/chalkhq/highfin/dev-next`)
+	cmd = exec.Command(`docker`, `build`, `-t`, `chalkhq_highfin_dev-next`, `/shark/tmp/chalkhq/highfin/dev-next`)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()

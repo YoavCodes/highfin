@@ -27,11 +27,18 @@ func Deploy(r types.Response) {
 		return
 	}
 	fmt.Println(branch)
+
 	// randomly generate a folder
 	checkout_folder := `/octopus/tmp/` + account + `/` + project + `/` + branch
 	repo_folder := `/coral/` + account + `/` + project + `/code.git`
 	// todo: maybe change the tmp path for easier cleanup
 
+	// check if the repo exists
+	if _, err := os.Stat(repo_folder); os.IsNotExist(err) {
+		r.AddError("repo does not exist, create the project first")
+		r.Kill(500)
+		return
+	}
 	_ = exec.Command(`mkdir`, `-p`, checkout_folder).Run()
 	//defer exec.Command(`rm`, `-R`, checkout_folder).Run()
 
@@ -43,8 +50,13 @@ func Deploy(r types.Response) {
 	cmd2.Stdin, _ = cmd.StdoutPipe()
 
 	_ = cmd2.Start()
-	_ = cmd.Start()
+	err := cmd.Start()
 	_ = cmd2.Wait()
+
+	if err != nil {
+		r.AddError("failed to archive repo " + branch)
+		r.Kill(500)
+	}
 
 	/*
 		todo: you ideally want to build the container on the shark it's being deployed on that way if you have an app and a database you can build an image with only the relevant subfolders of your git repo
@@ -64,7 +76,7 @@ func Deploy(r types.Response) {
 	// copy in DockerFile and todo: jellyfish
 	// todo: move Dockerfile to /shark/docker/Dockerfile
 
-	_ = exec.Command(`cp`, `/vagrant/docker/Dockerfile`, checkout_folder+"/Dockerfile").Run()
+	_ = exec.Command(`cp`, `/vagrant/octopus/docker/Dockerfile`, checkout_folder+"/Dockerfile").Run()
 	_ = exec.Command(`cp`, `/vagrant/go/bin/jellyfish`, checkout_folder+"/jellyfish").Run()
 	// todo: remove the following line, this merely simulates an app
 	_ = exec.Command(`cp`, `/vagrant/go/bin/test`, checkout_folder+"/test").Run()
@@ -85,24 +97,32 @@ func Deploy(r types.Response) {
 	assigned_shark := "http://10.10.10.10"
 
 	// tar branch for re-deploys
-	exec.Command(`rm`, `-R`, tar_file).Run()
-	_ = exec.Command(`tar`, `-c`, `-f`, tar_file, `-C`, checkout_folder, `.`).Run()
+	_ = exec.Command(`rm`, `-R`, tar_file).Run()
+	err = exec.Command(`tar`, `-c`, `-f`, tar_file, `-C`, checkout_folder, `.`).Run()
+	if err != nil {
+		r.AddError("failed to create tar file")
+		r.Kill(500)
+		return
+	}
 
 	// upload
 	var b bytes.Buffer
 	w := multipart.NewWriter(&b)
 	f, err := os.Open(tar_file)
 	if err != nil {
+		r.AddError("failed to open tar file")
 		r.Kill(500)
 		return
 	}
 	fw, err := w.CreateFormFile("tar", branch+`.tar`)
 	if err != nil {
+		r.AddError("failed to create form file")
 		r.Kill(500)
 		return
 	}
 
 	if _, err = io.Copy(fw, f); err != nil {
+		r.AddError("failed to populate form file")
 		r.Kill(500)
 		return
 	}
@@ -116,7 +136,7 @@ func Deploy(r types.Response) {
 	client := &http.Client{}
 	res, err := client.Do(req)
 	if err != nil {
-		fmt.Println("failed")
+		fmt.Println("failed to upload file to shark")
 
 		r.Kill(500)
 		return

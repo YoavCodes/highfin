@@ -51,6 +51,7 @@ func GetConfig() Config {
 }
 
 func SetConfig(config Config) {
+	_ = os.MkdirAll(GUPPY_PATH, 777)
 	configFile, err := os.Create(GUPPY_CONFIG)
 
 	LogE(err)
@@ -78,7 +79,7 @@ func SetConfig(config Config) {
 	}
 
 	if config.Server == "" {
-		config.Server = "http://highf.in" // the default
+		config.Server = "10.10.10.50" // the default, public would be octopus.highf.in which will hit the squid and be routed to octopus
 	}
 
 	// json is encoded as a []byte

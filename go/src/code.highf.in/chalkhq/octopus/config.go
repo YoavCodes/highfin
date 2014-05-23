@@ -48,7 +48,7 @@ func GetConfig() Config {
 }
 
 func SetConfig(config Config) {
-
+	_ = os.MkdirAll(SHARK_PATH, 777)
 	configFile, err := os.Create(SHARK_CONFIG)
 
 	if err != nil {
@@ -62,7 +62,7 @@ func SetConfig(config Config) {
 	_ = configFile // this seems like half a thought
 
 	if config.Port == "" {
-		config.Port = "8080"
+		config.Port = "80"
 	}
 
 	// json is encoded as a []byte

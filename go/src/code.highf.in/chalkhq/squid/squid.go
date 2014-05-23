@@ -1,12 +1,7 @@
 package main
 
 /*
-Octopus is a Shark & Sqid co-ordinator.
-- spins up new instances
-- aggregates and respondds to health checks
-- maintains open connection to Squids and Sharks at all times
-- allocates Sharks to deploy containers
-- manages Coral and builds containers before sending tar to a given Shark to deploy
+Squid is a reverse proxy and load balancer
 */
 
 import (
@@ -37,11 +32,9 @@ func main() {
 			w.Write([]byte(`<a href="http://highf.in">HighF.in</a> 404: Sorry ` + scheme + "://" + req.Host + ` doesn't exist. bloop bloop`))
 			return
 		}
-		fmt.Println("test2")
 		director := func(target *http.Request) {
 			target.URL.Scheme = "http"
 			target.URL.Host = domainMap[req.Host]
-			fmt.Println(".....", domainMap[req.Host])
 			target.URL.Path = req.URL.Path
 			target.URL.RawQuery = req.URL.RawQuery
 		}
@@ -51,6 +44,6 @@ func main() {
 		p.ServeHTTP(w, req)
 
 	})
-	http.ListenAndServe(":8080", nil)
-	fmt.Println("Listening on 8080")
+	http.ListenAndServe(":80", nil)
+	fmt.Println("Listening on 80")
 }
