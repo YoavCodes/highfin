@@ -73,6 +73,9 @@ func main() {
 
 	case "run":
 		util.Run()
+
+	case "npm-install":
+		util.NpmInstall()
 	case "test-salmon":
 		// test salmon
 
@@ -110,7 +113,7 @@ func main() {
 		}
 
 	default:
-		util.Log("Try: guppy [bootstrap, config, get, test, run, push]")
+		util.Log("Try: guppy [bootstrap, config, get, test, run, push, deploy dev-next, npm-install]")
 	}
 
 }

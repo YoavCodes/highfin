@@ -27,7 +27,7 @@
 		"lang": "golang",
 		"version": "1.2.1",
 		"main": "code.highf.in/chalkhq/guppy",
-		"watch": ["./go/src/code.highf.in/chalkhq/guppy"],
+		"watch": ["./go/src/code.highf.in/chalkhq/guppy", "./go/src/code.highf.in/chalkhq/highfin"],
 		"instances": ["1:80"]
 	}
 

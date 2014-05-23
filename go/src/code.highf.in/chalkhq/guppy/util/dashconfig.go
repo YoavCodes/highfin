@@ -10,6 +10,8 @@ type App struct {
 	Version string   `json:"version"`
 	Main    string   `json:"main"`
 	Watch   []string `json:"watch"`
+	Exclude []string `json:"exclude"`
+	Npm     []string `json:"npm"`
 }
 
 type DashConfig struct {

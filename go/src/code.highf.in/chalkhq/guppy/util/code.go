@@ -1,6 +1,7 @@
 package util
 
 import (
+	"code.highf.in/chalkhq/highfin/nodejs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,6 +21,7 @@ func Run() {
 	for _ = range c {
 		// watch/run all apps unless specific app is provided in commandline
 		if len(os.Args) >= 3 {
+			// todo: this check should be an external function, maybe a method on dashConfig struct
 			if app, ok := dashConfig.Apps[os.Args[2]]; ok == true {
 				if isChanged(app) == true {
 					go runApp(app)
@@ -72,6 +74,7 @@ func isChanged(app App) bool {
 
 			if _, i := watched[path]; i == false || watched[path] != time {
 				// new file to watch
+				Log(path)
 				changed = true
 			}
 
@@ -111,16 +114,39 @@ func runApp(app App) {
 			//Log("failed to run app", err.Error())
 		}
 	case "nodejs":
-		// this should just use the function directly instead of depending on another guppy process
-		err := E("guppy node " + app.Version + " " + app.Main).Run()
+		nodejs.InstallNode(app.Version)
+		err := E(nodejs.BinPath(app.Version) + ` ` + app.Main).Run()
 		if err != nil {
-			Log("failed to install app")
+
 		}
+		// this should just use the function directly instead of depending on another guppy process
+		//err := E("guppy node " + app.Version + " " + app.Main).Run()
+		//if err != nil {
+		//	Log("failed to install app")
+		//}
 	}
 }
 
-func Build() {
+func NpmInstall() {
 	// godep go install code.highf.in/chalkhq/highfin
+	dashConfig = GetDashConfig()
+	if app, ok := dashConfig.Apps[os.Args[2]]; ok == true {
+		switch app.Lang {
+		case "nodejs":
+			for i := range app.Npm {
+				path := dashConfig.BasePath + `/` + app.Npm[i]
+				Log(nodejs.NpmPath(app.Version) + ` --prefix ` + path + ` install ` + path)
+				err := E(nodejs.NpmPath(app.Version) + ` --prefix ` + path + ` install ` + path).Run()
+				if err != nil {
+					Log(`failed to npm install ` + path)
+				}
+
+			}
+		}
+	} else {
+		Log(`App "` + os.Args[2] + `" is not declared in -.json`)
+		return
+	}
 }
 
 func CompileLESS() {

@@ -1,0 +1,11 @@
+{
+	"salmon": {
+		"lang": "nodejs",
+		"version": "0.10.28",
+		"main": "./salmon.js",
+		"watch": ["./app", "./config"],
+		"exclude": ["./salmon/node_modules", "./libs/node_modules", "./public/assets/css"],
+		"npm": ["./salmon", "./libs"],
+		"instances": ["1:80"]
+	}
+}
