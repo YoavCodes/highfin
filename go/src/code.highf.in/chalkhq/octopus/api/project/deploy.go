@@ -3,6 +3,7 @@ package project
 import (
 	"bytes"
 	"code.highf.in/chalkhq/highfin/config"
+	"code.highf.in/chalkhq/highfin/nodejs"
 	"code.highf.in/chalkhq/highfin/types"
 	"fmt"
 	"io"
@@ -31,6 +32,9 @@ func Deploy(r types.Response) {
 	// randomly generate a folder
 	checkout_folder := `/octopus/tmp/` + account + `/` + project + `/` + branch
 	repo_folder := `/coral/` + account + `/` + project + `/code.git`
+	repo_branch_folder := `/coral/` + account + `/` + project + `/` + branch
+	_ = exec.Command(`mkdir`, `-p`, repo_branch_folder).Run()
+
 	// todo: maybe change the tmp path for easier cleanup
 
 	// check if the repo exists
@@ -70,82 +74,148 @@ func Deploy(r types.Response) {
 	// at this point there's an untarred export of the latest of specified branch
 
 	// get the dashconfig
-	dashConfig := config.GetDashConfig()
+	fmt.Println(checkout_folder + "/")
+	dashConfig := config.GetDashConfig(checkout_folder + "/")
+	if len(dashConfig.Apps) == 0 {
+		r.AddError("-.json file is empty or not found")
+		r.Kill(500)
+		//todo: cleanup on 500, maybe defers
+		return
+	}
 	fmt.Println(dashConfig)
 
-	// copy in DockerFile and todo: jellyfish
-	// todo: move Dockerfile to /shark/docker/Dockerfile
+	for app_name := range dashConfig.Apps {
+		app := dashConfig.Apps[app_name]
+		app_folder := checkout_folder + "/" + app_name
 
-	_ = exec.Command(`cp`, `/vagrant/octopus/docker/Dockerfile`, checkout_folder+"/Dockerfile").Run()
-	_ = exec.Command(`cp`, `/vagrant/go/bin/jellyfish`, checkout_folder+"/jellyfish").Run()
-	// todo: remove the following line, this merely simulates an app
-	_ = exec.Command(`cp`, `/vagrant/go/bin/test`, checkout_folder+"/test").Run()
+		/*c := exec.Command(`ls`, app_folder+"/..")
+		c.Stderr = os.Stderr
+		c.Stdout = os.Stdout
+		_ = c.Run()*/
 
-	// if err != nil {
-	// 	r.AddError("failed to copy docker file")
-	// 	r.Kill(500)
-	// }
+		_ = exec.Command(`cp`, checkout_folder+`/-.json`, app_folder+`/-.json`).Run()
 
-	tar_file := `/coral/` + account + `/` + project + `/` + branch + ".tar"
+		//_ = exec.Command(`mkdir`, `-p`, app_folder).Run() // this should already exist
+		// the rest should probably be a goroutine:
 
-	// todo: run tests and build
-	// todo: tests should only be run in the final docker container setup, so dev-next test that uses a database can actually access the database container
+		// copy in DockerFile and todo: jellyfish
+		// todo: move Dockerfile to /shark/docker/Dockerfile
 
-	// create docker file
+		//_ = exec.Command(`cp`, `/vagrant/octopus/docker/Dockerfile`, app_folder+"/Dockerfile").Run()
+		// create docker file
+		//newline :=
+		docker_instructions := "FROM saltstack/debian-7\n" //note: must use "" instead of `` for \n to resolve to newline and not literally \n
+		docker_instructions += "ADD . /code\n"
 
-	// assign deploy to sharks
-	assigned_shark := "http://10.10.10.10"
+		if app.Lang == "nodejs" {
 
-	// tar branch for re-deploys
-	_ = exec.Command(`rm`, `-R`, tar_file).Run()
-	err = exec.Command(`tar`, `-c`, `-f`, tar_file, `-C`, checkout_folder, `.`).Run()
-	if err != nil {
-		r.AddError("failed to create tar file")
-		r.Kill(500)
-		return
+			// the docker image is actually built on shark, octopus doesn't need node.js versions installed
+			nodejs.InstallNode(app.Version)
+			_ = exec.Command(`mkdir`, `-p`, app_folder+"/__dep/n/").Run()
+			_ = exec.Command(`cp`, `-r`, nodejs.BinFolder(app.Version), app_folder+`/__dep/n/`).Run()
+			//docker_instructions += "ADD /usr/local/n/" + app.Version + " /usr/local/n/" + app.Version + "\n"
+			fmt.Println("node folder:")
+			/*c := exec.Command(`ls`, app_folder+`/__dep/n/`+app.Version+"/")
+			c.Stderr = os.Stderr
+			c.Stdout = os.Stdout
+			_ = c.Run()
+			fmt.Println("======")*/
+
+		}
+
+		docker_instructions += "ENTRYPOINT /code/jellyfish " + app_name
+
+		err := ioutil.WriteFile(app_folder+`/Dockerfile`, []byte(docker_instructions), 777)
+
+		_ = exec.Command(`cp`, `/vagrant/go/bin/jellyfish`, app_folder+"/jellyfish").Run()
+		// todo: remove the following line, this merely simulates an app
+		//_ = exec.Command(`cp`, `/vagrant/go/bin/test`, app_folder+"/test").Run()
+
+		// if err != nil {
+		// 	r.AddError("failed to copy docker file")
+		// 	r.Kill(500)
+		// }
+
+		tar_file := `/coral/` + account + `/` + project + `/` + branch + `/` + app_name + ".tar"
+
+		// todo: run tests and build
+		// todo: tests should only be run in the final docker container setup, so dev-next test that uses a database can actually access the database container
+
+		// create docker file
+
+		// assign deploy to sharks
+		assigned_shark := "http://10.10.10.10"
+
+		// tar branch for re-deploys
+		_ = exec.Command(`rm`, `-R`, tar_file).Run() // todo: only remove this on new code, a plain deploy should use the existing tar files
+
+		cmd = exec.Command(`tar`, `-c`, `-f`, tar_file, `-C`, app_folder, `.`)
+		cmd.Stderr = os.Stderr
+		cmd.Stdout = os.Stdout
+		cmd.Run()
+		if err != nil {
+			r.AddError("failed to create tar file")
+			r.Kill(500)
+			return
+		}
+
+		// upload
+		var b bytes.Buffer
+		w := multipart.NewWriter(&b)
+
+		// todo: this should be a json struct, related to mesh
+		// app_name_field, err := w.CreateFormField("app_name")
+		// if err != nil {
+		// 	r.AddError("failed to create app_name field")
+		// 	r.Kill(500)
+		// 	return
+		// }
+		//app_name_field.Write([]byte(app_name))
+		_ = w.WriteField("app_name", app_name)
+
+		// write the tar file to the upload request body
+		f, err := os.Open(tar_file)
+		if err != nil {
+			r.AddError("failed to open tar file")
+			r.Kill(500)
+			return
+		}
+
+		fw, err := w.CreateFormFile("tar", branch+`.tar`)
+		if err != nil {
+			r.AddError("failed to create form file")
+			r.Kill(500)
+			return
+		}
+
+		if _, err = io.Copy(fw, f); err != nil {
+			r.AddError("failed to populate form file")
+			r.Kill(500)
+			return
+		}
+
+		// todo: this should probably happen after the request. re: ensure we're streaming bytes and not copying the whole tar file into ram
+		w.Close()
+
+		// make the request
+		req, err := http.NewRequest("POST", assigned_shark+`/project/deploy`, &b)
+
+		req.Header.Set("Content-Type", w.FormDataContentType())
+		fmt.Println("attempting request")
+		client := &http.Client{}
+		res, err := client.Do(req)
+		if err != nil {
+			fmt.Println("failed to upload file to shark")
+
+			r.Kill(500)
+			return
+		}
+
+		body, _ := ioutil.ReadAll(res.Body)
+		fmt.Println(string(body))
+		fmt.Println("success")
+
+		r.Kill(200)
 	}
-
-	// upload
-	var b bytes.Buffer
-	w := multipart.NewWriter(&b)
-	f, err := os.Open(tar_file)
-	if err != nil {
-		r.AddError("failed to open tar file")
-		r.Kill(500)
-		return
-	}
-	fw, err := w.CreateFormFile("tar", branch+`.tar`)
-	if err != nil {
-		r.AddError("failed to create form file")
-		r.Kill(500)
-		return
-	}
-
-	if _, err = io.Copy(fw, f); err != nil {
-		r.AddError("failed to populate form file")
-		r.Kill(500)
-		return
-	}
-
-	w.Close()
-
-	req, err := http.NewRequest("POST", assigned_shark+`/project/deploy`, &b)
-
-	req.Header.Set("Content-Type", w.FormDataContentType())
-	fmt.Println("attempting request")
-	client := &http.Client{}
-	res, err := client.Do(req)
-	if err != nil {
-		fmt.Println("failed to upload file to shark")
-
-		r.Kill(500)
-		return
-	}
-
-	body, _ := ioutil.ReadAll(res.Body)
-	fmt.Println(string(body))
-	fmt.Println("success")
-
-	r.Kill(200)
 
 }

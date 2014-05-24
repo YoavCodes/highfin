@@ -23,6 +23,14 @@
 		"instances": ["1:80"]
 	},
 
+	"jellyfish": {
+		"lang": "golang",
+		"version": "1.2.1",
+		"main": "code.highf.in/chalkhq/jellyfish",
+		"watch": ["./go/src/code.highf.in/chalkhq/jellyfish"],
+		"instance": ["1:80"]
+	},
+
 	"guppy": {
 		"lang": "golang",
 		"version": "1.2.1",

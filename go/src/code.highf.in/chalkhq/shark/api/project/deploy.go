@@ -1,6 +1,8 @@
 package project
 
 import (
+	"code.highf.in/chalkhq/highfin/config"
+	"code.highf.in/chalkhq/highfin/nodejs"
 	"code.highf.in/chalkhq/highfin/types"
 	"fmt"
 	"io"
@@ -13,6 +15,9 @@ func Deploy(r types.Response) {
 	fmt.Println(r.Req)
 
 	r.Req.ParseMultipartForm(64)
+
+	app_name := r.Req.MultipartForm.Value["app_name"][0]
+	//fmt.Println("app name: " + app_name)
 
 	file, err := r.Req.MultipartForm.File["tar"][0].Open()
 	if err != nil {
@@ -43,7 +48,7 @@ func Deploy(r types.Response) {
 	_ = os.RemoveAll("/shark/tmp/chalkhq/highfin/dev-next.tar")
 	_ = os.MkdirAll("/shark/tmp/chalkhq/highfin/dev-next", 777)
 
-	dst, err := os.Create("/shark/tmp/chalkhq/highfin/dev-next.tar")
+	dst, err := os.Create("/shark/tmp/chalkhq/highfin/dev-next/salmon.tar")
 
 	defer dst.Close()
 
@@ -59,7 +64,7 @@ func Deploy(r types.Response) {
 		return
 	}
 
-	cmd := exec.Command(`tar`, `-x`, `-C`, `/shark/tmp/chalkhq/highfin/dev-next`, `-f`, `/shark/tmp/chalkhq/highfin/dev-next.tar`)
+	cmd := exec.Command(`tar`, `-x`, `-C`, `/shark/tmp/chalkhq/highfin/dev-next/salmon`, `-f`, `/shark/tmp/chalkhq/highfin/dev-next/salmon.tar`)
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()
 	if err != nil {
@@ -68,8 +73,19 @@ func Deploy(r types.Response) {
 		return
 	}
 
+	// get config
+	dashConfig := config.GetDashConfig(`/shark/tmp/chalkhq/highfin/dev-next/salmon`)
+	app := dashConfig.Apps[app_name]
+	fmt.Println(app)
+
+	// switch app.Lang {
+	// case "nodejs":
+	// 	nodejs.InstallNode(app.Version)
+	// 	_ = exec.Command(`cp`, nodejs.BinFolder, `/shark/tmp/chalkhq/highfin/dev-next/salmon`).Run()
+	// }
+
 	/// build the image
-	cmd = exec.Command(`docker`, `build`, `-t`, `chalkhq_highfin_dev-next`, `/shark/tmp/chalkhq/highfin/dev-next`)
+	cmd = exec.Command(`docker`, `build`, `-t`, `chalkhq_highfin_dev-next_salmon`, `/shark/tmp/chalkhq/highfin/dev-next/salmon`)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()
@@ -86,7 +102,7 @@ func Deploy(r types.Response) {
 
 	fmt.Println(err)
 
-	cmd = exec.Command(`docker`, `run`, `-p`, `50000:8081`, `--name=chalkhq_highfin_dev-next`, `chalkhq_highfin_dev-next`)
+	cmd = exec.Command(`docker`, `run`, `-p`, `50000:8081`, `--name=chalkhq_highfin_dev-next_salmon`, `chalkhq_highfin_dev-next_salmon`)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 

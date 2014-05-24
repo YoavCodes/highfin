@@ -1,6 +1,7 @@
 package util
 
 import (
+	"code.highf.in/chalkhq/highfin/config"
 	"code.highf.in/chalkhq/highfin/nodejs"
 	"os"
 	"os/exec"
@@ -10,12 +11,12 @@ import (
 	"time"
 )
 
-var dashConfig DashConfig
+var dashConfig config.DashConfig
 var watched map[string]int64 = make(map[string]int64)
 var cmd *exec.Cmd
 
 func Run() {
-	dashConfig = GetDashConfig()
+	dashConfig = config.GetDashConfig("./")
 
 	c := time.Tick(1 * time.Second)
 	for _ = range c {
@@ -41,7 +42,7 @@ func Run() {
 	}
 }
 
-func isChanged(app App) bool {
+func isChanged(app config.App) bool {
 	//Log("Hello Guppy Watch util\n")
 	// make it walk the folder tree.. if it's fast enough we can just hash it every few seconds and compare, or count the number of files.
 	// or even better start using https://github.com/howeyc/fsnotify which will become an official api in go1.4
@@ -74,7 +75,7 @@ func isChanged(app App) bool {
 
 			if _, i := watched[path]; i == false || watched[path] != time {
 				// new file to watch
-				Log(path)
+				//Log(path)
 				changed = true
 			}
 
@@ -96,7 +97,7 @@ func isChanged(app App) bool {
 	return changed
 }
 
-func runApp(app App) {
+func runApp(app config.App) {
 	if cmd != nil {
 		Log("Change detected...")
 		cmd.Process.Kill()
@@ -129,7 +130,7 @@ func runApp(app App) {
 
 func NpmInstall() {
 	// godep go install code.highf.in/chalkhq/highfin
-	dashConfig = GetDashConfig()
+	dashConfig = config.GetDashConfig("./")
 	if app, ok := dashConfig.Apps[os.Args[2]]; ok == true {
 		switch app.Lang {
 		case "nodejs":
