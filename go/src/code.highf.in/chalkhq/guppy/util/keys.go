@@ -25,12 +25,21 @@ func ApplyKeys(email string) {
 			return err
 		}
 
-		//_, file := filepath.Split(path)
+		// todo: use sed / grep to ensure only one instance of this exists in /etc/ssh/ssh_config
 
-		//new_path := "/home/vagrant/.ssh/" + file
+		file, _ := os.OpenFile("/etc/ssh/ssh_config", os.O_APPEND, 777)
 
-		//cmd := exec.Command("cp", "-rfp", path, new_path)
-		//_, _ = cmd.CombinedOutput()
+		defer file.Close()
+
+		_, _ = file.WriteString("Identityfile /vagrant/keys/guppy")
+
+		// fmt.Println("add key", path)
+		// _, file := filepath.Split(path)
+
+		// new_path := "/home/vagrant/.ssh/" + file
+
+		// cmd := exec.Command("cp", "-rfp", path, new_path)
+		// _, _ = cmd.CombinedOutput()
 
 		return err
 	})
