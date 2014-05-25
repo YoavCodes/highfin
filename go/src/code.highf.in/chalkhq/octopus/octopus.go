@@ -51,6 +51,8 @@ func main() {
 	fmt.Println("running octopus")
 	config := GetConfig()
 
+	UpdateSalmon()
+
 	fmt.Println("listening on " + config.Port)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
@@ -96,28 +98,13 @@ func router(r types.Response) {
 		project.Create(r)
 
 	case "/project/deploy":
-		//todo: this is either triggered by highf.in admin panel, guppy directly, or from a post-receive hook
-		// it should: checkout the latest of the requested branch of the project from coral
-		// read the -.json file, run npm install or go install, run tests, delete the .git folder and create a tar
-		// reading the -.json file should consult it's list of sharks for available resources
-		// upload the tar file to that shark or spin up a new one
-
+		// todo:reading the -.json file should consult it's list of sharks for available resources
 		// basic wiring: checkout dev-next branch, read -.json file, tar, upload to shark.
 		project.Deploy(r)
 
 	case "/salmon/update":
-		// todo: this would be triggered by a git postreceive hook in the salmon repo
-		// it needs to do a shallow clone of salmon to /octopus/salmon,
-		// delete the .git folder, run git init, git add ., git commit -m "new salmon repo"
-		// should also create devnext and devcurrent branches
-		// then git create() will simply copy this new salmon repo's .git folder to a user's project git folder code.git
-		// git symbolic-ref HEAD refs/heads/dev-next make the dev-next branch default, git branch -D master
-		/*
-			git branch dev-next
-			git branch -D master
-			git symbolic-ref HEAD refs/heads/dev-next
-			// other branches are delete and created during deploys to various environments
-		*/
+		UpdateSalmon()
+
 	default:
 		r.Response.Meta.Status = 404
 		r.AddError("Path: " + r.Req.URL.Path + " is not valid")

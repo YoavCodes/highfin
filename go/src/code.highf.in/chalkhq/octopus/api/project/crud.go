@@ -47,18 +47,18 @@ func Create(r types.Response) {
 
 	_ = exec.Command("touch", project_path+".ssh/authorized_keys").Run()
 
-	_ = exec.Command("mkdir", "-p", project_path+"code.git").Run()
+	//_ = exec.Command("mkdir", "-p", project_path+"code.git").Run()
 
 	// todo: guppy should have responsibility for creating a salmon app. the repo cloned here should
 	//		only contain a -.json file and a readme or maybe default to salmon is the way to go
-	cmd := exec.Command("git", "clone", "--bare", "--depth", "1", "https://github.com/YoavGivati/salmon", "-b", "dev-next", project_path+"code.git")
-
+	//cmd := exec.Command("git", "clone", "--depth", "1", "https://github.com/YoavGivati/salmon", "-b", "dev-next", "/octopus/salmon/") //project_path+"code.git")
+	_ = exec.Command("cp", "-r", "/octopus/salmon/.git", project_path+"code.git").Run()
 	//_ = exec.Command("cp", "-R", "/octopus/salmon/.git", project_path+"code.git").Run()
 
 	//cmd := exec.Command("git", "clone", "--bare", "https://github.com/YoavGivati/salmon", project_path+"code.git")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	_ = cmd.Run()
+	//cmd.Stdout = os.Stdout
+	//cmd.Stderr = os.Stderr
+	//_ = cmd.Run()
 
 	//_ = exec.Command("rm", "-Rd", project_path+"code.git").Run()
 
