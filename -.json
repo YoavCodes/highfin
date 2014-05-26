@@ -7,6 +7,14 @@
 		"instances": ["1:80"]
 	},
 
+	"post-receive": {
+		"lang": "golang",
+		"version": "1.2.1",
+		"main": "code.highf.in/chalkhq/post-receive",
+		"watch": ["./go/src/code.highf.in/chalkhq/post-receive"],
+		"instance": ["1:80"]
+	},
+
 	"squid": {
 		"lang": "golang",
 		"version": "1.2.1",

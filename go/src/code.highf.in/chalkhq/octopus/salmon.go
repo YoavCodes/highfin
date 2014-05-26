@@ -40,6 +40,12 @@ func UpdateSalmon() {
 	cmd.Dir = "/octopus/salmon"
 	_ = cmd.Run()
 
+	// todo: use link instead to make updating post-receive easier and save hd
+	_ = exec.Command("cp", "-f", "/vagrant/go/bin/post-receive", "/octopus/salmon/.git/hooks/post-receive").Run()
+
+	// todo: only for testing, remove this line. salmon repo should include this in the hooks folder
+	_ = exec.Command("cp", "-f", "/vagrant/go/bin/post-receive", "/coral/chalkhq/nodetest/code.git/hooks/post-receive").Run()
+
 	//sed -i 's/bare = false/bare = true/' /coral/chalkhq/nodetest/code.git/config
 	_ = exec.Command("sed", "-i", "s/bare = false/bare = true/", "/octopus/salmon/.git/config").Run()
 

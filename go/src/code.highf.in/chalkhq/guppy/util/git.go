@@ -33,7 +33,6 @@ func Clone(account string, project string, email string, server string) {
 }
 
 func Create(account string, project string, email string, server string) {
-	// todo: octopus will need a create that creates the project folder with a dev key
 	Log(server)
 	public_key, _ := ioutil.ReadFile(KEY_PATH + "/guppy.pub")
 	res, err := http.PostForm("http://"+server+"/project/create", url.Values{"account": {account}, "project": {project}, "key": {string(public_key)}, "force": {"true"}})
@@ -44,6 +43,25 @@ func Create(account string, project string, email string, server string) {
 	defer res.Body.Close()
 	body, err := ioutil.ReadAll(res.Body)
 	Log(string(body))
+}
+
+func Push(message string) {
+	// todo: run unit tests locally, only continue if passes, unless "commit_if_passes = false" in -.json
+	// wrapper around common git workflow in a frybox
+	cmd := exec.Command("git", "commit", "-a", "-m", message)
+	cmd.Dir = "/vagrant/code"
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	cmd.Run()
+
+	Log("pushing")
+	// todo: if commit fails, don't push
+	cmd = exec.Command("git", "push", "origin", "dev-next")
+	cmd.Dir = "/vagrant/code"
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	cmd.Run()
+
 }
 
 func Deploy(account string, project string, branch string, server string) {

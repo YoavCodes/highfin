@@ -56,6 +56,14 @@ func main() {
 		// you can reclone and refresh your environment whenever you want.
 		config = util.GetConfig()
 		util.Clone(config.Account, config.Project, config.Email, config.Server)
+	case "push":
+		// should tests be run here?
+		if len(os.Args) >= 3 {
+			message := os.Args[2] // commit message
+			util.Push(message)
+		} else {
+			util.Log("guppy push commit_message")
+		}
 
 	case "deploy":
 		branch := os.Args[2]
@@ -85,9 +93,6 @@ func main() {
 
 	case "run-salmon":
 		//util.Watch()
-
-	case "push":
-		// builds, tests,
 
 	case "set-server":
 		config = util.GetConfig()
