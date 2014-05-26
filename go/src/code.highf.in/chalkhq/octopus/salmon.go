@@ -5,6 +5,7 @@ import (
 )
 
 func UpdateSalmon() {
+	_ = exec.Command("rm", "-r", "/octopus/salmon").Run()
 
 	// it needs to do a shallow clone of salmon to /octopus/salmon,
 	_ = exec.Command("git", "clone", "--depth", "1", "https://github.com/YoavGivati/salmon", "/octopus/salmon/").Run()
@@ -27,6 +28,10 @@ func UpdateSalmon() {
 	cmd.Dir = "/octopus/salmon"
 	_ = cmd.Run()
 
+	cmd = exec.Command("git", "checkout", "dev-next")
+	cmd.Dir = "/octopus/salmon"
+	_ = cmd.Run()
+
 	cmd = exec.Command("git", "branch", "-D", "master")
 	cmd.Dir = "/octopus/salmon"
 	_ = cmd.Run()
@@ -34,6 +39,10 @@ func UpdateSalmon() {
 	cmd = exec.Command("git", "sybolic-ref", "HEAD", "refs/heads/dev-next")
 	cmd.Dir = "/octopus/salmon"
 	_ = cmd.Run()
+
+	//sed -i 's/bare = false/bare = true/' /coral/chalkhq/nodetest/code.git/config
+	_ = exec.Command("sed", "-i", "s/bare = false/bare = true/", "/octopus/salmon/.git/config").Run()
+
 	// todo: this would be triggered by a git postreceive hook in the salmon repo
 	// should also create devnext and devcurrent branches
 	// then git create() will simply copy this new salmon repo's .git folder to a user's project git folder code.git

@@ -9,6 +9,7 @@ package util
 import "os"
 import "io"
 import "fmt"
+import "os/exec"
 import "encoding/json"
 
 const (
@@ -77,6 +78,10 @@ func SetConfig(config Config) {
 		Log("Please enter your email address:")
 		fmt.Scanf("%s", &config.Email)
 	}
+
+	// todo: add name to configuration
+	//_ = exec.Command("git", "config", "--global", "user.name", config.Name).Run()
+	_ = exec.Command("git", "config", "--global", "user.email", config.Email).Run()
 
 	if config.Server == "" {
 		config.Server = "10.10.10.50" // the default, public would be octopus.highf.in which will hit the squid and be routed to octopus
