@@ -2,7 +2,7 @@ package project
 
 import (
 	"code.highf.in/chalkhq/highfin/config"
-	"code.highf.in/chalkhq/highfin/nodejs"
+	//"code.highf.in/chalkhq/highfin/nodejs"
 	"code.highf.in/chalkhq/highfin/types"
 	"fmt"
 	"io"
