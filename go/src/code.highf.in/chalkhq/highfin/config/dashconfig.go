@@ -8,13 +8,29 @@ import (
 	"path/filepath"
 )
 
+type Endpoint struct {
+	Path string `json:"path"`
+	Port string `json:"port"`
+}
+
+type Static struct {
+	Path string `json:"path"`
+	Dir  string `json:"dir"`
+}
+
+type Exec struct {
+	Lang      string     `json:"lang"`
+	Version   string     `json:"version"`
+	Main      string     `json:"main"`
+	Watch     []string   `json:"watch"`
+	Exclude   []string   `json:"exclude"`
+	Npm       []string   `json:"npm"`
+	Endpoints []Endpoint `json:"endpoints"`
+}
+
 type App struct {
-	Lang    string   `json:"lang"`
-	Version string   `json:"version"`
-	Main    string   `json:"main"`
-	Watch   []string `json:"watch"`
-	Exclude []string `json:"exclude"`
-	Npm     []string `json:"npm"`
+	Execs   []Exec   `json:"exec"`
+	Statics []Static `json:"static"`
 }
 
 type DashConfig struct {
@@ -51,8 +67,11 @@ func GetDashConfig(path string) DashConfig {
 
 	for j := range dashConfig.Apps {
 		app := dashConfig.Apps[j]
-		for i := 0; i < len(app.Watch); i++ {
-			app.Watch[i], _ = filepath.Abs(parent_search + app.Watch[i])
+		for k := 0; k < len(app.Execs); k++ {
+			appPart := app.Execs[k]
+			for i := 0; i < len(appPart.Watch); i++ {
+				appPart.Watch[i], _ = filepath.Abs(parent_search + appPart.Watch[i])
+			}
 		}
 	}
 

@@ -107,19 +107,24 @@ func Deploy(r types.Response) {
 		docker_instructions := "FROM saltstack/debian-7\n" //note: must use "" instead of `` for \n to resolve to newline and not literally \n
 		docker_instructions += "ADD . /code\n"
 
-		if app.Lang == "nodejs" {
+		for i := 0; i < len(app.Execs); i++ {
+			appPart := app.Execs[i]
 
-			// the docker image is actually built on shark, octopus doesn't need node.js versions installed
-			nodejs.InstallNode(app.Version)
-			_ = exec.Command(`mkdir`, `-p`, app_folder+"/__dep/n/").Run()
-			_ = exec.Command(`cp`, `-r`, nodejs.BinFolder(app.Version), app_folder+`/__dep/n/`).Run()
-			//docker_instructions += "ADD /usr/local/n/" + app.Version + " /usr/local/n/" + app.Version + "\n"
-			fmt.Println("node folder:")
-			/*c := exec.Command(`ls`, app_folder+`/__dep/n/`+app.Version+"/")
-			c.Stderr = os.Stderr
-			c.Stdout = os.Stdout
-			_ = c.Run()
-			fmt.Println("======")*/
+			if appPart.Lang == "nodejs" {
+
+				// the docker image is actually built on shark, octopus doesn't need node.js versions installed
+				nodejs.InstallNode(appPart.Version)
+				_ = exec.Command(`mkdir`, `-p`, app_folder+"/__dep/n/").Run()
+				_ = exec.Command(`cp`, `-r`, nodejs.BinFolder(appPart.Version), app_folder+`/__dep/n/`).Run()
+				//docker_instructions += "ADD /usr/local/n/" + app.Version + " /usr/local/n/" + app.Version + "\n"
+				fmt.Println("node folder:")
+				/*c := exec.Command(`ls`, app_folder+`/__dep/n/`+app.Version+"/")
+				c.Stderr = os.Stderr
+				c.Stdout = os.Stdout
+				_ = c.Run()
+				fmt.Println("======")*/
+
+			}
 
 		}
 
