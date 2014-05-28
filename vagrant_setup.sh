@@ -64,6 +64,10 @@ note 'set global git user'
 git config --global user.email "git@highf.in"
 git config --global user.name "HighFin GIT Fish"
 
+# make user switch to root and cd to /vagrant 
+echo "cd /vagrant;" >> /home/vagrant/.profile
+echo "sudo su;" >> /home/vagrant/.profile
+
 
 # bind port 80 to 8080, so apps can listen on 80 via 8080 ie: without sudo
 #iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080
