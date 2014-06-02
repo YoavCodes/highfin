@@ -20,26 +20,30 @@ func ApplyKeys(email string) {
 	// copy all keys in KEY_PATH into /home/vagrant/.ssh/ so git can find them
 	// this will allow users to have keys for their own remote repos/accounts
 	// KEY_PATH folder provides easy access to host os, but should be git ignored
+
+	// todo: use sed / grep to ensure only one instance of this exists in /etc/ssh/ssh_config
+	//file, err := os.OpenFile("/etc/ssh/ssh_config", os.O_APPEND, 0777)
+	file, err := os.Create("/etc/ssh/ssh_config")
+	defer file.Close()
+
+	if err != nil {
+		fmt.Println("error opening file")
+		fmt.Println(err.Error())
+	}
+
 	_ = filepath.Walk(KEY_PATH, func(path string, info os.FileInfo, err error) error {
-		if info.IsDir() == true || path[:len(path)-4] == ".pub" {
+		if info.IsDir() == true || path[len(path)-4:] == ".pub" {
+			fmt.Println(3)
 			return err
 		}
 
-		// todo: use sed / grep to ensure only one instance of this exists in /etc/ssh/ssh_config
+		_, err = file.WriteString("Identityfile " + path + "\n")
 
-		file, _ := os.OpenFile("/etc/ssh/ssh_config", os.O_APPEND, 777)
+		if err != nil {
+			fmt.Println("error writing to file")
+			fmt.Println(err.Error())
 
-		defer file.Close()
-
-		_, _ = file.WriteString("Identityfile /vagrant/keys/guppy")
-
-		// fmt.Println("add key", path)
-		// _, file := filepath.Split(path)
-
-		// new_path := "/home/vagrant/.ssh/" + file
-
-		// cmd := exec.Command("cp", "-rfp", path, new_path)
-		// _, _ = cmd.CombinedOutput()
+		}
 
 		return err
 	})

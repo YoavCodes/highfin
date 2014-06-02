@@ -1,5 +1,28 @@
 package project
 
+/*
+	We want Octopus to keep a docker repository running.
+	ideally implemented in golang integrated into the octopus source.
+	In it we store every version of node + jellyfish.
+	- deploying a new version of jellyfish will mean, replacing the jellyfish binary
+	in each of those images on all the octopi.
+	- the optimization here being uploading context, since node and jellyfish will already be an image
+	- however note: you're still downloading the image with node and jellyfish from
+	the octopus private docker repo. so it adds lots of overhead and code for managing the
+	repo and images and rebuilding the images every time jellyfish is upgraded.
+	but it saves a few seconds on deploys by minimizing the context to uplaod
+
+	note: we fundamentally want all building to occur on sharks and not octopus. we want octopus
+	ram, cpu, and disk space to be used as close to zero as possible. when scaling to thousands
+	of sharks, we can't put the burden on octopus, it's fundamentally not scalable, AND
+	the sharks would sit there with unused resources.
+
+	note: docker will re-run any containers on reboot. so shark doesn't have to micromanage.
+
+	Shark: keep track of how many free resources it has, octopus can keep track of which
+	containers are deployed on which sharks.
+*/
+
 import (
 	"code.highf.in/chalkhq/highfin/config"
 	//"code.highf.in/chalkhq/highfin/nodejs"
@@ -46,7 +69,7 @@ func Deploy(r types.Response) {
 
 	_ = os.RemoveAll("/shark/tmp/chalkhq/highfin/dev-next")
 	_ = os.RemoveAll("/shark/tmp/chalkhq/highfin/dev-next.tar")
-	_ = os.MkdirAll("/shark/tmp/chalkhq/highfin/dev-next", 777)
+	_ = os.MkdirAll("/shark/tmp/chalkhq/highfin/dev-next/salmon", 777)
 
 	dst, err := os.Create("/shark/tmp/chalkhq/highfin/dev-next/salmon.tar")
 
@@ -98,7 +121,7 @@ func Deploy(r types.Response) {
 	fmt.Println("running container")
 	//cmd = exec.Command(`docker`, `-d`, `run`, `chalkhq_highfin_dev-next`)
 	// todo: this should have more advnaced unique naming, and remove the previous image after
-	err = exec.Command(`docker`, `rm`, `-f`, `chalkhq_highfin_dev-next`).Run()
+	err = exec.Command(`docker`, `rm`, `-f`, `chalkhq_highfin_dev-next_salmon`).Run()
 
 	fmt.Println(err)
 

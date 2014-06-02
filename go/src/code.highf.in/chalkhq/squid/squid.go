@@ -16,7 +16,7 @@ func main() {
 	fmt.Println("starting...")
 	domainMap := make(map[string]string)
 
-	domainMap["app1.test"] = "10.10.10.10:50000"
+	domainMap["app1.test"] = "10.10.10.11:50000"
 
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		fmt.Println(string(req.Host + req.URL.Path))

@@ -104,7 +104,7 @@ func Deploy(r types.Response) {
 		//_ = exec.Command(`cp`, `/vagrant/octopus/docker/Dockerfile`, app_folder+"/Dockerfile").Run()
 		// create docker file
 		//newline :=
-		docker_instructions := "FROM saltstack/debian-7\n" //note: must use "" instead of `` for \n to resolve to newline and not literally \n
+		docker_instructions := "FROM google/debian:wheezy\n" //note: must use "" instead of `` for \n to resolve to newline and not literally \n
 		docker_instructions += "ADD . /code\n"
 
 		for i := 0; i < len(app.Execs); i++ {
@@ -149,7 +149,7 @@ func Deploy(r types.Response) {
 		// create docker file
 
 		// assign deploy to sharks
-		assigned_shark := "http://10.10.10.10"
+		assigned_shark := "http://10.10.10.11"
 
 		// tar branch for re-deploys
 		_ = exec.Command(`rm`, `-R`, tar_file).Run() // todo: only remove this on new code, a plain deploy should use the existing tar files

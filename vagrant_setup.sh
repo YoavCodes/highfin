@@ -34,13 +34,13 @@ tar -C /usr/local -xzf /vagrant/lib/go${GO_VERSION}.linux-amd64.tar.gz
 
 #note: guppy should install and run whichever version is stipulated in -.json file
 #		it should install the latest version as main
-note 'Install node & npm binaries'
-sudo cp /vagrant/lib/node-$NODE_VERSION /usr/bin/node
+# note 'Install node & npm binaries'
+# sudo cp /vagrant/lib/node-$NODE_VERSION /usr/bin/node
  
-sudo mkdir /usr/bin/node_modules
+# sudo mkdir /usr/bin/node_modules
  
-sudo cp -Rf /vagrant/lib/npm-$NPM_VERSION/npm /usr/bin/npm
-sudo cp -Rf /vagrant/lib/npm-$NPM_VERSION/node_modules/* /usr/bin/node_modules
+# sudo cp -Rf /vagrant/lib/npm-$NPM_VERSION/npm /usr/bin/npm
+# sudo cp -Rf /vagrant/lib/npm-$NPM_VERSION/node_modules/* /usr/bin/node_modules
 
 # export the go and workspaces bin folders to PATH
 #sudo su - root /bin/bash -c 'echo PATH="/vagrant/go/bin:/usr/local/go/bin:/guppy:$PATH\"" > /etc/environment'
@@ -67,6 +67,7 @@ git config --global user.name "HighFin GIT Fish"
 # make user switch to root and cd to /vagrant 
 echo "cd /vagrant;" >> /home/vagrant/.profile
 echo "sudo su;" >> /home/vagrant/.profile
+
 
 
 # bind port 80 to 8080, so apps can listen on 80 via 8080 ie: without sudo

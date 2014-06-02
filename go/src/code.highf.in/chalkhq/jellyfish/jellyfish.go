@@ -37,7 +37,7 @@ func main() {
 	// execute all the parts of the app
 	for k := 0; k < len(app.Execs); k++ {
 		appPart := app.Execs[k]
-		fmt.Println("appPart " + string(k) + " len: " + string(len(appPart.Endpoints)) + " / " + appPart.Endpoints[0].Path)
+		//fmt.Println("appPart " + string(k) + " len: " + string(len(appPart.Endpoints)) + " / " + appPart.Endpoints[0].Path)
 		for i := 0; i < len(appPart.Endpoints); i++ {
 			mapping := appPart.Endpoints[i]
 			// mesh[app1.test] = 127.0.0.1:8080
