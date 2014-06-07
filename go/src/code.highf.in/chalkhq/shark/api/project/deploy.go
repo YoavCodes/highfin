@@ -24,9 +24,9 @@ package project
 */
 
 import (
-	"code.highf.in/chalkhq/highfin/config"
-	//"code.highf.in/chalkhq/highfin/nodejs"
-	"code.highf.in/chalkhq/highfin/types"
+	"code.highf.in/chalkhq/shared/config"
+	//"code.highf.in/chalkhq/shared/nodejs"
+	"code.highf.in/chalkhq/shared/types"
 	"fmt"
 	"io"
 	"os"
@@ -39,6 +39,9 @@ func Deploy(r types.Response) {
 
 	r.Req.ParseMultipartForm(64)
 
+	account_name := r.Req.MultipartForm.Value["account_name"][0]
+	project_name := r.Req.MultipartForm.Value["project_name"][0]
+	env_name := r.Req.MultipartForm.Value["env_name"][0]
 	app_name := r.Req.MultipartForm.Value["app_name"][0]
 	//fmt.Println("app name: " + app_name)
 
@@ -67,11 +70,11 @@ func Deploy(r types.Response) {
 	// todo: stream into untar command
 	// save file to disk
 
-	_ = os.RemoveAll("/shark/tmp/chalkhq/highfin/dev-next")
-	_ = os.RemoveAll("/shark/tmp/chalkhq/highfin/dev-next.tar")
-	_ = os.MkdirAll("/shark/tmp/chalkhq/highfin/dev-next/salmon", 777)
+	_ = os.RemoveAll(`/shark/tmp/` + account_name + `/` + project_name + `/` + env_name + ``)
+	_ = os.RemoveAll(`/shark/tmp/` + account_name + `/` + project_name + `/` + env_name + `.tar`)
+	_ = os.MkdirAll(`/shark/tmp/`+account_name+`/`+project_name+`/`+env_name+`/`+app_name, 777)
 
-	dst, err := os.Create("/shark/tmp/chalkhq/highfin/dev-next/salmon.tar")
+	dst, err := os.Create(`/shark/tmp/` + account_name + `/` + project_name + `/` + env_name + `/` + app_name + `.tar`)
 
 	defer dst.Close()
 
@@ -87,7 +90,7 @@ func Deploy(r types.Response) {
 		return
 	}
 
-	cmd := exec.Command(`tar`, `-x`, `-C`, `/shark/tmp/chalkhq/highfin/dev-next/salmon`, `-f`, `/shark/tmp/chalkhq/highfin/dev-next/salmon.tar`)
+	cmd := exec.Command(`tar`, `-x`, `-C`, `/shark/tmp/`+account_name+`/`+project_name+`/`+env_name+`/`+app_name, `-f`, `/shark/tmp/`+account_name+`/`+project_name+`/`+env_name+`/`+app_name+`.tar`)
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()
 	if err != nil {
@@ -97,18 +100,18 @@ func Deploy(r types.Response) {
 	}
 
 	// get config
-	dashConfig := config.GetDashConfig(`/shark/tmp/chalkhq/highfin/dev-next/salmon`)
+	dashConfig := config.GetDashConfig(`/shark/tmp/` + account_name + `/` + project_name + `/` + env_name + `/` + app_name)
 	app := dashConfig.Apps[app_name]
 	fmt.Println(app)
 
 	// switch app.Lang {
 	// case "nodejs":
 	// 	nodejs.InstallNode(app.Version)
-	// 	_ = exec.Command(`cp`, nodejs.BinFolder, `/shark/tmp/chalkhq/highfin/dev-next/salmon`).Run()
+	// 	_ = exec.Command(`cp`, nodejs.BinFolder, `/shark/tmp/`+account_name+`/`+project_name+`/`+env_name+`/salmon`).Run()
 	// }
 
 	/// build the image
-	cmd = exec.Command(`docker`, `build`, `-t`, `chalkhq_highfin_dev-next_salmon`, `/shark/tmp/chalkhq/highfin/dev-next/salmon`)
+	cmd = exec.Command(`docker`, `build`, `-t`, account_name+`_`+project_name+`_`+env_name+`_`+app_name, `/shark/tmp/`+account_name+`/`+project_name+`/`+env_name+`/`+app_name)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()
@@ -121,11 +124,11 @@ func Deploy(r types.Response) {
 	fmt.Println("running container")
 	//cmd = exec.Command(`docker`, `-d`, `run`, `chalkhq_highfin_dev-next`)
 	// todo: this should have more advnaced unique naming, and remove the previous image after
-	err = exec.Command(`docker`, `rm`, `-f`, `chalkhq_highfin_dev-next_salmon`).Run()
+	err = exec.Command(`docker`, `rm`, `-f`, account_name+`_`+project_name+`_`+env_name+`_`+app_name).Run()
 
 	fmt.Println(err)
 
-	cmd = exec.Command(`docker`, `run`, `-p`, `50000:8081`, `--name=chalkhq_highfin_dev-next_salmon`, `chalkhq_highfin_dev-next_salmon`)
+	cmd = exec.Command(`docker`, `run`, `-d`, `-p`, `50000:8081`, `--name=`+account_name+`_`+project_name+`_`+env_name+`_`+app_name, account_name+`_`+project_name+`_`+env_name+`_`+app_name)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 

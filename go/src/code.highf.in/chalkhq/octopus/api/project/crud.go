@@ -2,7 +2,7 @@ package project
 
 import "os"
 import "os/exec"
-import "code.highf.in/chalkhq/highfin/types"
+import "code.highf.in/chalkhq/shared/types"
 import "strconv"
 import "fmt"
 

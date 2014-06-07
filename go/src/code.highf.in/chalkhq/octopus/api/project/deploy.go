@@ -2,9 +2,9 @@ package project
 
 import (
 	"bytes"
-	"code.highf.in/chalkhq/highfin/config"
-	"code.highf.in/chalkhq/highfin/nodejs"
-	"code.highf.in/chalkhq/highfin/types"
+	"code.highf.in/chalkhq/shared/config"
+	"code.highf.in/chalkhq/shared/nodejs"
+	"code.highf.in/chalkhq/shared/types"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+
+	"encoding/json"
 
 	//"strconv"
 	//"time"
@@ -176,6 +178,9 @@ func Deploy(r types.Response) {
 		// 	return
 		// }
 		//app_name_field.Write([]byte(app_name))
+		_ = w.WriteField("account_name", account)
+		_ = w.WriteField("project_name", project)
+		_ = w.WriteField("env_name", branch) // todo: disambiguate branch vs. env, they mean different things
 		_ = w.WriteField("app_name", app_name)
 
 		// write the tar file to the upload request body
@@ -217,10 +222,24 @@ func Deploy(r types.Response) {
 		}
 
 		body, _ := ioutil.ReadAll(res.Body)
-		fmt.Println(string(body))
+
+		apiRes := ApiRes{}
+
+		_ = json.Unmarshal(body, apiRes)
+
+		fmt.Println(apiRes.Meta.Status)
+
 		fmt.Println("success")
 
 		r.Kill(200)
 	}
 
+}
+
+type ApiRes struct {
+	Meta struct {
+		Status int         `json:"status"`
+		Errors []string    `json:"errors"`
+		Data   interface{} `json:"data"`
+	} `json:"meta"`
 }

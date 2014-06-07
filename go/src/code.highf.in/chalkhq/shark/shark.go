@@ -11,7 +11,7 @@ Octopus is a Shark & Sqid co-ordinator.
 
 import (
 	"bytes"
-	"code.highf.in/chalkhq/highfin/types"
+	"code.highf.in/chalkhq/shared/types"
 	"code.highf.in/chalkhq/shark/api/project"
 	"fmt"
 	"log"
