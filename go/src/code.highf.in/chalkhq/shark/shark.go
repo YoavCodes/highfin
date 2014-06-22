@@ -47,6 +47,7 @@ func init() {
 
 func main() {
 	fmt.Println("running shark")
+
 	config := GetConfig()
 
 	fmt.Println("listening on " + config.Port)
@@ -94,6 +95,10 @@ func router(r types.Response) {
 		// receives a tar file, the command to run, and resource limits for each container
 		// needs to run a docker container
 		project.Deploy(r)
+
+	case "/project/remove":
+		// removes a running instance
+		project.Remove(r)
 
 	default:
 		r.Response.Meta.Status = 404

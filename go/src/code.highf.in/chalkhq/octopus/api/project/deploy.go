@@ -5,24 +5,53 @@ import (
 	"code.highf.in/chalkhq/shared/config"
 	"code.highf.in/chalkhq/shared/nodejs"
 	"code.highf.in/chalkhq/shared/types"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
+	"strconv"
 
-	"encoding/json"
-
-	//"strconv"
-	//"time"
+	"strings"
+	"time"
 )
+
+/*
+	TODO: pass mesh in from main(). we want a global Mesh object as it's responsible for managing shark health as well.
+*/
 
 func Deploy(r types.Response) {
 	account := r.Req.FormValue("account")
 	project := r.Req.FormValue("project")
 	branch := r.Req.FormValue("branch")
+
+	project_name := account + "_" + project
+
+	mesh := new(Mesh)
+	//mesh.Projects = make(map[string]*Project)
+	//mesh.Projects[account+"_"+project] = Project
+
+	// todo: persist to db or disk. until then we just build the object and then keep it in memory on each deploy.
+	// TODO:: Move this to the main() function and pass mesh into Deploy fu
+	mesh.Sharks = make(map[string]*Shark)
+	mesh.Projects = make(map[string]*Project)
+	fmt.Println("mitsubishi")
+	mesh.Projects[project_name] = &Project{}
+	mesh.Sharks["10.10.10.11"] = &Shark{}
+
+	mesh.Sharks["10.10.10.11"].Info.Ip = "10.10.10.11"
+	mesh.Sharks["10.10.10.11"].Info.Num_deploys = 0
+	//mesh.Sharks["10.10.10.11"].Info.ports = make([]string)
+
+	//mesh.Projects[project_name].Info = &ProjectInfo{}
+
+	mesh.Projects[project_name].Info.GITrepo = "/coral/" + account + "/" + project + "/code.git"
+
+	fmt.Println(mesh.Projects[account+"_"+project].Info.GITrepo)
 
 	if account == "" || project == "" || branch == "" {
 		r.AddError("missing variables. Expected [account, project, branch], got [" + r.Req.FormValue("account") + ", " + r.Req.FormValue("project") + ", " + r.Req.FormValue("branch") + "]")
@@ -77,18 +106,30 @@ func Deploy(r types.Response) {
 
 	// get the dashconfig
 	fmt.Println(checkout_folder + "/")
-	dashConfig := config.GetDashConfig(checkout_folder + "/")
-	if len(dashConfig.Apps) == 0 {
+	mesh.Projects[account+"_"+project].Temp = config.GetDashConfig(checkout_folder + "/")
+	fmt.Println(mesh.Projects[project_name].Temp.Apps)
+	if len(mesh.Projects[project_name].Temp.Apps) == 0 {
 		r.AddError("-.json file is empty or not found")
 		r.Kill(500)
+		mesh.Projects[project_name].Temp = config.DashConfig{}
 		//todo: cleanup on 500, maybe defers
 		return
 	}
-	fmt.Println(dashConfig)
+	fmt.Println(mesh.Projects[project_name].Temp)
 
-	for app_name := range dashConfig.Apps {
-		app := dashConfig.Apps[app_name]
+	// todo: at this point it should find a shark, and assign the sharkports and read the domains /ports from json object
+	// preceding the deploy-loop below, squid should be notified with new routing information and activate private routing
+
+	for app_name := range mesh.Projects[project_name].Temp.Apps {
+
+		app := mesh.Projects[project_name].Temp.Apps[app_name]
 		app_folder := checkout_folder + "/" + app_name
+		// todo: should loop for each instance of the app, but only loop the upload request, the other build stuff should not be repeted for each instance.
+		jellyport := app.Instances[0]
+
+		fmt.Println(mesh.Sharks["10.10.10.11"].Info.Ports)
+
+		//sharkport_port := strconv.FormatInt(int64(len(mesh.Sharks["10.10.10.11"].Info.Ports))+int64(5000), 10)
 
 		/*c := exec.Command(`ls`, app_folder+"/..")
 		c.Stderr = os.Stderr
@@ -151,7 +192,7 @@ func Deploy(r types.Response) {
 		// create docker file
 
 		// assign deploy to sharks
-		assigned_shark := "http://10.10.10.11"
+		assigned_shark := "http://" + mesh.Sharks["10.10.10.11"].Info.Ip
 
 		// tar branch for re-deploys
 		_ = exec.Command(`rm`, `-R`, tar_file).Run() // todo: only remove this on new code, a plain deploy should use the existing tar files
@@ -178,6 +219,9 @@ func Deploy(r types.Response) {
 		// 	return
 		// }
 		//app_name_field.Write([]byte(app_name))
+		instanceID := strconv.FormatInt(time.Now().UnixNano(), 10)
+		_ = w.WriteField("instanceID", instanceID)
+		//_ = w.WriteField("sharkport_port", sharkport_port)
 		_ = w.WriteField("account_name", account)
 		_ = w.WriteField("project_name", project)
 		_ = w.WriteField("env_name", branch) // todo: disambiguate branch vs. env, they mean different things
@@ -218,28 +262,161 @@ func Deploy(r types.Response) {
 			fmt.Println("failed to upload file to shark")
 
 			r.Kill(500)
+			mesh.Projects[project_name].Temp = config.DashConfig{}
 			return
 		}
 
 		body, _ := ioutil.ReadAll(res.Body)
 
+		fmt.Println(string(body))
+
 		apiRes := ApiRes{}
 
-		_ = json.Unmarshal(body, apiRes)
+		err = json.Unmarshal(body, &apiRes)
+
+		if err != nil {
+			fmt.Println("failed to unmarshal response")
+			fmt.Println(err)
+		}
 
 		fmt.Println(apiRes.Meta.Status)
 
-		fmt.Println("success")
+		fmt.Println(apiRes)
 
-		r.Kill(200)
+		var sharkport_port string = apiRes.Data["sharkport_port"].(string)
+		sharkport := mesh.Sharks["10.10.10.11"].Info.Ip + ":" + sharkport_port
+
+		fmt.Println("sharkport: " + sharkport)
+		fmt.Println("instanceID: " + instanceID)
+		fmt.Println("jellyport: " + jellyport)
+		// if success
+		app.Sharkports = make(map[string]string)
+		app.Deploys = make(map[string]string)
+
+		app.Sharkports[jellyport] = sharkport
+		app.Deploys[instanceID] = sharkport
+
+		fmt.Println(mesh.Sharks["10.10.10.11"].Info.Ports)
+		mesh.Sharks["10.10.10.11"].Info.Ports = append(mesh.Sharks["10.10.10.11"].Info.Ports, sharkport_port)
+		fmt.Println(mesh.Sharks["10.10.10.11"].Info.Ports)
+
 	}
+	// todo: this part should wait for all success signals from jellyfish, for now we assume the deploy was successfull
+
+	// todo: send signal to squid to enable domain switch
+
+	// todo: convert dev-next branch variable to DEVnext Project env name so it works cross env
+
+	// issue take down to sharks where devnext apps are hosted.
+	for app_name := range mesh.Projects[project_name].DEVnext.Apps {
+		app := mesh.Projects[project_name].DEVnext.Apps[app_name]
+		for instanceID := range app.Deploys {
+			sharkport := app.Deploys[instanceID]
+
+			sharkport_ip := strings.SplitAfter(sharkport, ":")[0]
+			// todo: send request to shark to take down
+			res, err := http.PostForm(sharkport_ip+"/project/remove", url.Values{"instanceID": {instanceID}})
+			if err != nil {
+				fmt.Println("failed to remove instance error: ", err.Error())
+				return
+			}
+			defer res.Body.Close()
+			body, err := ioutil.ReadAll(res.Body)
+			fmt.Println(string(body))
+		}
+	}
+
+	// clean up Temp env.
+	mesh.Projects[project_name].DEVnext = mesh.Projects[project_name].Temp
+	mesh.Projects[project_name].Temp = config.DashConfig{}
+
+	fmt.Println("success")
+
+	r.Kill(200)
 
 }
 
 type ApiRes struct {
 	Meta struct {
-		Status int         `json:"status"`
-		Errors []string    `json:"errors"`
-		Data   interface{} `json:"data"`
+		Status int      `json:"status"`
+		Errors []string `json:"errors"`
 	} `json:"meta"`
+	Data map[string]interface{} `json:"data"`
 }
+
+/*
+	Sharks is a map of Shark servers and their available resources
+	todo: find most efficient mechanism for finding available space for a given set of requirements.
+	Mesh.Sharks[ip_address]struct{}
+
+	Deploys is a map of project/env deploys, which shark they're on
+	Mesh.Projects[deploy_id].Shark
+*/
+type Mesh struct {
+	Sharks   map[string]*Shark
+	Projects map[string]*Project
+}
+
+type Project struct {
+	Info struct {
+		GITrepo   string // /coral/chalhkq/highfin/code.git.. may support github git hosting
+		Deploying string // a string ie: devnext, devcurrent, etc. of the currently deploying env.
+	}
+	DEVnext    config.DashConfig // map[appPart]
+	QAnext     config.DashConfig
+	DEVcurrent config.DashConfig
+	QAcurrent  config.DashConfig
+	PROD       config.DashConfig
+	Temp       config.DashConfig // temporary. a project can deploy one env at a time. if successful it'll replace that env. otherwise Temp will just be cleared unapologetically
+}
+
+type Shark struct {
+	Info struct {
+		Ip          string   // the shark's private ip for octopus to connect to
+		Num_deploys int      // num deploys on the shark
+		Ports       []string // exposed ports
+	}
+	Cpu struct {
+		Total     int
+		Available int
+	}
+	Ram struct {
+		Total     int
+		Available int
+	}
+}
+
+// type Env struct {
+// 	AppParts map[string]AppPart
+// }
+
+// type AppPart struct {
+// 	Execs      []config.Exec     // could differ between envs.
+// 	Sharkports map[string]string // map[instance]sharkport
+// 	Domains    map[string]string // map[domain]sharkport
+// }
+
+/*
+
+	Deploys[chalkhq_highfin] {
+		info stuct {
+			git_repo string // /coral/chalkhq/highfin/code.git
+
+		}
+
+		dev-next struct {
+			env string // dev-next
+			appParts struct { // web
+				lang string //nodejs
+			}
+			domains map[domain_name][["private_ip", "private_ip2"]string] // public facing domains to internal ips
+			ports map[domain_name][["private_ip", "private_ip2"]string] // private mapping for jellyfish proxy -.json specified private ports to internal ips:ports that may exist on other
+		}
+		qa-next etc..
+		can later purchase
+		custom-feature {}
+
+	}
+
+
+*/

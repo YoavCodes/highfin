@@ -26,11 +26,13 @@ package project
 import (
 	"code.highf.in/chalkhq/shared/config"
 	//"code.highf.in/chalkhq/shared/nodejs"
+	"bufio"
 	"code.highf.in/chalkhq/shared/types"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 func Deploy(r types.Response) {
@@ -39,10 +41,12 @@ func Deploy(r types.Response) {
 
 	r.Req.ParseMultipartForm(64)
 
-	account_name := r.Req.MultipartForm.Value["account_name"][0]
-	project_name := r.Req.MultipartForm.Value["project_name"][0]
-	env_name := r.Req.MultipartForm.Value["env_name"][0]
+	//account_name := r.Req.MultipartForm.Value["account_name"][0]
+	//project_name := r.Req.MultipartForm.Value["project_name"][0]
+	//env_name := r.Req.MultipartForm.Value["env_name"][0]
 	app_name := r.Req.MultipartForm.Value["app_name"][0]
+	instanceID := r.Req.MultipartForm.Value["instanceID"][0]
+	//sharkport_port := r.Req.MultipartForm.Value["sharkport_port"][0]
 	//fmt.Println("app name: " + app_name)
 
 	file, err := r.Req.MultipartForm.File["tar"][0].Open()
@@ -70,11 +74,11 @@ func Deploy(r types.Response) {
 	// todo: stream into untar command
 	// save file to disk
 
-	_ = os.RemoveAll(`/shark/tmp/` + account_name + `/` + project_name + `/` + env_name + ``)
-	_ = os.RemoveAll(`/shark/tmp/` + account_name + `/` + project_name + `/` + env_name + `.tar`)
-	_ = os.MkdirAll(`/shark/tmp/`+account_name+`/`+project_name+`/`+env_name+`/`+app_name, 777)
+	_ = os.RemoveAll(`/shark/tmp/` + instanceID + ``)
+	_ = os.RemoveAll(`/shark/tmp/` + instanceID + `.tar`)
+	_ = os.MkdirAll(`/shark/tmp/`+instanceID, 777)
 
-	dst, err := os.Create(`/shark/tmp/` + account_name + `/` + project_name + `/` + env_name + `/` + app_name + `.tar`)
+	dst, err := os.Create(`/shark/tmp/` + instanceID + `.tar`)
 
 	defer dst.Close()
 
@@ -90,7 +94,7 @@ func Deploy(r types.Response) {
 		return
 	}
 
-	cmd := exec.Command(`tar`, `-x`, `-C`, `/shark/tmp/`+account_name+`/`+project_name+`/`+env_name+`/`+app_name, `-f`, `/shark/tmp/`+account_name+`/`+project_name+`/`+env_name+`/`+app_name+`.tar`)
+	cmd := exec.Command(`tar`, `-x`, `-C`, `/shark/tmp/`+instanceID, `-f`, `/shark/tmp/`+instanceID+`.tar`)
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()
 	if err != nil {
@@ -100,7 +104,7 @@ func Deploy(r types.Response) {
 	}
 
 	// get config
-	dashConfig := config.GetDashConfig(`/shark/tmp/` + account_name + `/` + project_name + `/` + env_name + `/` + app_name)
+	dashConfig := config.GetDashConfig(`/shark/tmp/` + instanceID)
 	app := dashConfig.Apps[app_name]
 	fmt.Println(app)
 
@@ -111,7 +115,7 @@ func Deploy(r types.Response) {
 	// }
 
 	/// build the image
-	cmd = exec.Command(`docker`, `build`, `-t`, account_name+`_`+project_name+`_`+env_name+`_`+app_name, `/shark/tmp/`+account_name+`/`+project_name+`/`+env_name+`/`+app_name)
+	cmd = exec.Command(`docker`, `build`, `-t`, instanceID, `/shark/tmp/`+instanceID)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()
@@ -124,11 +128,16 @@ func Deploy(r types.Response) {
 	fmt.Println("running container")
 	//cmd = exec.Command(`docker`, `-d`, `run`, `chalkhq_highfin_dev-next`)
 	// todo: this should have more advnaced unique naming, and remove the previous image after
-	err = exec.Command(`docker`, `rm`, `-f`, account_name+`_`+project_name+`_`+env_name+`_`+app_name).Run()
+	//err = exec.Command(`docker`, `rm`, `-f`, instanceID).Run()
 
-	fmt.Println(err)
+	///fmt.Println(err)
 
-	cmd = exec.Command(`docker`, `run`, `-d`, `-p`, `50000:8081`, `--name=`+account_name+`_`+project_name+`_`+env_name+`_`+app_name, account_name+`_`+project_name+`_`+env_name+`_`+app_name)
+	// sharkport : jellyfish's port
+	//sharkport = 0
+
+	// run the container
+	//cmd = exec.Command(`docker`, `run`, `-d`, `-p`, sharkport_port+`:8081`, `--name=`+instanceID, instanceID)
+	cmd = exec.Command(`docker`, `run`, `-d`, `-p`, `:8081`, `--name=e`+instanceID, instanceID)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -141,7 +150,40 @@ func Deploy(r types.Response) {
 		return
 	}
 
-	r.Kill(200)
+	// get the port
+	cmd = exec.Command(`docker`, `port`, `e`+instanceID, `8081`)
+	stdout, err := cmd.StdoutPipe()
+	cmd.Start()
 
-	// run the container
+	reader := bufio.NewReader(stdout)
+	sharkport, _, err := reader.ReadLine()
+
+	// err = cmd.Run()
+
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	r.AddError("failed to rget container port")
+	// 	r.Kill(500)
+	// 	return
+	// }
+
+	sharkport_array := strings.Split(string(sharkport), ":")
+
+	fmt.Println(sharkport_array[1])
+
+	r.Response.Data["sharkport_port"] = sharkport_array[1]
+	r.Kill(200)
+}
+
+func Remove(r types.Response) {
+	instanceID := r.Req.FormValue("instanceID")
+
+	err := exec.Command(`docker`, `rm`, `-f`, `e`+instanceID).Run()
+	if err != nil {
+		fmt.Println(err)
+		r.AddError("failed to kill container")
+		r.Kill(500)
+		return
+	}
+	r.Kill(200)
 }
