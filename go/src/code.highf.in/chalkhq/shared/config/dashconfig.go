@@ -29,13 +29,13 @@ type Exec struct {
 }
 
 type App struct {
-	Execs      []Exec            `json:"exec"`
-	Statics    []Static          `json:"static"`
-	Sharkports map[string]string `json:"sharkports"` // map[jellyport]sharkport
-	Domains    map[string]string `json:"domains"`    // map[domain]sharkport
-	Instances  []string          `json:"instances"`  //jellyports
-	Balances   map[string]string `json:"balances"`   // map[port]instance_index_range
-	Deploys    map[string]string `json:"deploys"`    //map[instanceID]sharkport
+	Execs      []Exec              `json:"exec"`
+	Statics    []Static            `json:"static"`
+	Sharkports map[string]string   `json:"sharkports"` // map[jellyport]sharkport
+	Domains    map[string][]string `json:"domains"`    // map[domain][]sharkports
+	Instances  []string            `json:"instances"`  //jellyports
+	Balances   map[string]string   `json:"balances"`   // map[port]instance_index_range
+	Deploys    map[string]string   `json:"deploys"`    //map[instanceID]sharkport
 }
 
 type DashConfig struct {

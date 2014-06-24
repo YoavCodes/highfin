@@ -125,9 +125,6 @@ func Deploy(r types.Response) {
 		app := mesh.Projects[project_name].Temp.Apps[app_name]
 		app_folder := checkout_folder + "/" + app_name
 		// todo: should loop for each instance of the app, but only loop the upload request, the other build stuff should not be repeted for each instance.
-		jellyport := app.Instances[0]
-
-		fmt.Println(mesh.Sharks["10.10.10.11"].Info.Ports)
 
 		//sharkport_port := strconv.FormatInt(int64(len(mesh.Sharks["10.10.10.11"].Info.Ports))+int64(5000), 10)
 
@@ -190,121 +187,161 @@ func Deploy(r types.Response) {
 		// todo: tests should only be run in the final docker container setup, so dev-next test that uses a database can actually access the database container
 
 		// create docker file
-
-		// assign deploy to sharks
-		assigned_shark := "http://" + mesh.Sharks["10.10.10.11"].Info.Ip
-
-		// tar branch for re-deploys
-		_ = exec.Command(`rm`, `-R`, tar_file).Run() // todo: only remove this on new code, a plain deploy should use the existing tar files
-
-		cmd = exec.Command(`tar`, `-c`, `-f`, tar_file, `-C`, app_folder, `.`)
-		cmd.Stderr = os.Stderr
-		cmd.Stdout = os.Stdout
-		cmd.Run()
-		if err != nil {
-			r.AddError("failed to create tar file")
-			r.Kill(500)
-			return
-		}
-
-		// upload
-		var b bytes.Buffer
-		w := multipart.NewWriter(&b)
-
-		// todo: this should be a json struct, related to mesh
-		// app_name_field, err := w.CreateFormField("app_name")
-		// if err != nil {
-		// 	r.AddError("failed to create app_name field")
-		// 	r.Kill(500)
-		// 	return
-		// }
-		//app_name_field.Write([]byte(app_name))
-		instanceID := strconv.FormatInt(time.Now().UnixNano(), 10)
-		_ = w.WriteField("instanceID", instanceID)
-		//_ = w.WriteField("sharkport_port", sharkport_port)
-		_ = w.WriteField("account_name", account)
-		_ = w.WriteField("project_name", project)
-		_ = w.WriteField("env_name", branch) // todo: disambiguate branch vs. env, they mean different things
-		_ = w.WriteField("app_name", app_name)
-
-		// write the tar file to the upload request body
-		f, err := os.Open(tar_file)
-		if err != nil {
-			r.AddError("failed to open tar file")
-			r.Kill(500)
-			return
-		}
-
-		fw, err := w.CreateFormFile("tar", branch+`.tar`)
-		if err != nil {
-			r.AddError("failed to create form file")
-			r.Kill(500)
-			return
-		}
-
-		if _, err = io.Copy(fw, f); err != nil {
-			r.AddError("failed to populate form file")
-			r.Kill(500)
-			return
-		}
-
-		// todo: this should probably happen after the request. re: ensure we're streaming bytes and not copying the whole tar file into ram
-		w.Close()
-
-		// make the request
-		req, err := http.NewRequest("POST", assigned_shark+`/project/deploy`, &b)
-
-		req.Header.Set("Content-Type", w.FormDataContentType())
-		fmt.Println("attempting request")
-		client := &http.Client{}
-		res, err := client.Do(req)
-		if err != nil {
-			fmt.Println("failed to upload file to shark")
-
-			r.Kill(500)
-			mesh.Projects[project_name].Temp = config.DashConfig{}
-			return
-		}
-
-		body, _ := ioutil.ReadAll(res.Body)
-
-		fmt.Println(string(body))
-
-		apiRes := ApiRes{}
-
-		err = json.Unmarshal(body, &apiRes)
-
-		if err != nil {
-			fmt.Println("failed to unmarshal response")
-			fmt.Println(err)
-		}
-
-		fmt.Println(apiRes.Meta.Status)
-
-		fmt.Println(apiRes)
-
-		var sharkport_port string = apiRes.Data["sharkport_port"].(string)
-		sharkport := mesh.Sharks["10.10.10.11"].Info.Ip + ":" + sharkport_port
-
-		fmt.Println("sharkport: " + sharkport)
-		fmt.Println("instanceID: " + instanceID)
-		fmt.Println("jellyport: " + jellyport)
-		// if success
 		app.Sharkports = make(map[string]string)
 		app.Deploys = make(map[string]string)
 
-		app.Sharkports[jellyport] = sharkport
-		app.Deploys[instanceID] = sharkport
+		for i := 0; i < len(app.Instances); i++ {
+			jellyport := app.Instances[i]
 
-		fmt.Println(mesh.Sharks["10.10.10.11"].Info.Ports)
-		mesh.Sharks["10.10.10.11"].Info.Ports = append(mesh.Sharks["10.10.10.11"].Info.Ports, sharkport_port)
-		fmt.Println(mesh.Sharks["10.10.10.11"].Info.Ports)
+			fmt.Println(mesh.Sharks["10.10.10.11"].Info.Ports)
+			// assign deploy to sharks
+			assigned_shark := "http://" + mesh.Sharks["10.10.10.11"].Info.Ip
+
+			// tar branch for re-deploys
+			_ = exec.Command(`rm`, `-R`, tar_file).Run() // todo: only remove this on new code, a plain deploy should use the existing tar files
+
+			cmd = exec.Command(`tar`, `-c`, `-f`, tar_file, `-C`, app_folder, `.`)
+			cmd.Stderr = os.Stderr
+			cmd.Stdout = os.Stdout
+			cmd.Run()
+			if err != nil {
+				r.AddError("failed to create tar file")
+				r.Kill(500)
+				return
+			}
+
+			// upload
+			var b bytes.Buffer
+			w := multipart.NewWriter(&b)
+
+			// todo: this should be a json struct, related to mesh
+			// app_name_field, err := w.CreateFormField("app_name")
+			// if err != nil {
+			// 	r.AddError("failed to create app_name field")
+			// 	r.Kill(500)
+			// 	return
+			// }
+			//app_name_field.Write([]byte(app_name))
+			instanceID := strconv.FormatInt(time.Now().UnixNano(), 10)
+			_ = w.WriteField("instanceID", instanceID)
+			//_ = w.WriteField("sharkport_port", sharkport_port)
+			_ = w.WriteField("account_name", account)
+			_ = w.WriteField("project_name", project)
+			_ = w.WriteField("env_name", branch) // todo: disambiguate branch vs. env, they mean different things
+			_ = w.WriteField("app_name", app_name)
+
+			// write the tar file to the upload request body
+			f, err := os.Open(tar_file)
+			if err != nil {
+				r.AddError("failed to open tar file")
+				r.Kill(500)
+				return
+			}
+
+			fw, err := w.CreateFormFile("tar", branch+`.tar`)
+			if err != nil {
+				r.AddError("failed to create form file")
+				r.Kill(500)
+				return
+			}
+
+			if _, err = io.Copy(fw, f); err != nil {
+				r.AddError("failed to populate form file")
+				r.Kill(500)
+				return
+			}
+
+			// todo: this should probably happen after the request. re: ensure we're streaming bytes and not copying the whole tar file into ram
+			w.Close()
+
+			// make the request
+			req, err := http.NewRequest("POST", assigned_shark+`/project/deploy`, &b)
+
+			req.Header.Set("Content-Type", w.FormDataContentType())
+			fmt.Println("attempting request")
+			client := &http.Client{}
+			res, err := client.Do(req)
+			if err != nil {
+				fmt.Println("failed to upload file to shark")
+
+				r.Kill(500)
+				mesh.Projects[project_name].Temp = config.DashConfig{}
+				return
+			}
+
+			body, _ := ioutil.ReadAll(res.Body)
+
+			fmt.Println(string(body))
+
+			apiRes := ApiRes{}
+
+			err = json.Unmarshal(body, &apiRes)
+
+			if err != nil {
+				fmt.Println("failed to unmarshal response")
+				fmt.Println(err)
+			}
+
+			fmt.Println(apiRes.Meta.Status)
+
+			fmt.Println(apiRes)
+
+			var sharkport_port string = apiRes.Data["sharkport_port"].(string)
+			sharkport := mesh.Sharks["10.10.10.11"].Info.Ip + ":" + sharkport_port
+
+			fmt.Println("sharkport: " + sharkport)
+			fmt.Println("instanceID: " + instanceID)
+			fmt.Println("jellyport: " + jellyport)
+			// if success
+
+			app.Sharkports[jellyport] = sharkport
+			app.Deploys[instanceID] = sharkport
+
+			for domain_key := range app.Domains {
+				if len(app.Domains[domain_key]) == 0 {
+					//app.Domains[domain_key] = make([]string, len(app.Instances))
+				}
+				app.Domains[domain_key] = append(app.Domains[domain_key], sharkport)
+				fmt.Println("--")
+				fmt.Println(app.Domains[domain_key])
+			}
+
+			// todo: not sure we need this now that the shark is selecting available ports automatically
+			fmt.Println(mesh.Sharks["10.10.10.11"].Info.Ports)
+			mesh.Sharks["10.10.10.11"].Info.Ports = append(mesh.Sharks["10.10.10.11"].Info.Ports, sharkport_port)
+			fmt.Println(mesh.Sharks["10.10.10.11"].Info.Ports)
+		}
 
 	}
 	// todo: this part should wait for all success signals from jellyfish, for now we assume the deploy was successfull
 
 	// todo: send signal to squid to enable domain switch
 
+	var domainMap map[string][]string
+
+	domainMap = make(map[string][]string)
+
+	for app_name := range mesh.Projects[project_name].Temp.Apps {
+		fmt.Println("=====" + app_name)
+		app := mesh.Projects[project_name].Temp.Apps[app_name]
+		for domain_name := range app.Domains {
+			fmt.Println("=======" + domain_name)
+			domainMap[domain_name] = app.Domains[domain_name]
+		}
+	}
+
+	domainMapJSON, _ := json.Marshal(domainMap)
+	fmt.Println("domainMapJSON_+_+_+")
+	fmt.Println(string(domainMapJSON))
+
+	res, err := http.PostForm("http://10.10.10.5:8282/route/update", url.Values{"account": {account}, "project": {project}, "branch": {branch}, "domains": {string(domainMapJSON)}})
+	if err != nil {
+		fmt.Println("request error: ", err.Error())
+		return
+	}
+	defer res.Body.Close()
+	body, err := ioutil.ReadAll(res.Body)
+	fmt.Println(string(body))
 	// todo: convert dev-next branch variable to DEVnext Project env name so it works cross env
 
 	// issue take down to sharks where devnext apps are hosted.
