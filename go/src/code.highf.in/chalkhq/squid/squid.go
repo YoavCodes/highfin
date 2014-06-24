@@ -5,13 +5,16 @@ Squid is a reverse proxy and load balancer
 */
 
 import (
+	"code.highf.in/chalkhq/shared/persistence"
 	"code.highf.in/chalkhq/shared/types"
 	//"code.highf.in/chalkhq/squid/api"
 	"encoding/json"
 	"fmt"
 	//"math"
+
 	"net/http"
 	"net/http/httputil"
+
 	"strings"
 	//"net/url"
 	//"net/http/httputil"
@@ -30,6 +33,8 @@ var idMap map[string][]string
 var domainMap map[string]Domain
 
 type Api struct{}
+
+var changed bool
 
 func (api *Api) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
@@ -58,7 +63,12 @@ func (api *Api) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 func main() {
 	fmt.Println("starting...")
+
+	changed = false
+
 	domainMap = make(map[string]Domain)
+	go persistence.GetData(&domainMap, "/squid/domainMap.json")
+	go persistence.PersistData(&domainMap, "/squid/domainMap.json", &changed)
 	//domainMap := make(map[string]string)
 
 	//domainMap["app1.test"] = "10.10.10.11:5000"
@@ -117,6 +127,7 @@ func router(r types.Response) {
 		fmt.Println("update called")
 		//api.Route_Create(r, &domainMap)
 		updateRoute(r)
+		defer func() { changed = true }()
 
 	default:
 		r.Response.Meta.Status = 404

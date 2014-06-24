@@ -24,32 +24,27 @@ import (
 	TODO: pass mesh in from main(). we want a global Mesh object as it's responsible for managing shark health as well.
 */
 
-func Deploy(r types.Response) {
+func Deploy(r types.Response, mesh *types.Mesh) {
 	account := r.Req.FormValue("account")
 	project := r.Req.FormValue("project")
 	branch := r.Req.FormValue("branch")
 
 	project_name := account + "_" + project
 
-	mesh := new(Mesh)
 	//mesh.Projects = make(map[string]*Project)
 	//mesh.Projects[account+"_"+project] = Project
 
 	// todo: persist to db or disk. until then we just build the object and then keep it in memory on each deploy.
 	// TODO:: Move this to the main() function and pass mesh into Deploy fu
-	mesh.Sharks = make(map[string]*Shark)
-	mesh.Projects = make(map[string]*Project)
-	fmt.Println("mitsubishi")
-	mesh.Projects[project_name] = &Project{}
-	mesh.Sharks["10.10.10.11"] = &Shark{}
 
-	mesh.Sharks["10.10.10.11"].Info.Ip = "10.10.10.11"
-	mesh.Sharks["10.10.10.11"].Info.Num_deploys = 0
+	if mesh.Projects[project_name] == nil {
+		//mesh.Projects = make(map[string]*types.Project)
+		mesh.Projects[project_name] = &types.Project{}
+		mesh.Projects[project_name].Info.GITrepo = "/coral/" + account + "/" + project + "/code.git"
+	}
 	//mesh.Sharks["10.10.10.11"].Info.ports = make([]string)
 
 	//mesh.Projects[project_name].Info = &ProjectInfo{}
-
-	mesh.Projects[project_name].Info.GITrepo = "/coral/" + account + "/" + project + "/code.git"
 
 	fmt.Println(mesh.Projects[account+"_"+project].Info.GITrepo)
 
@@ -193,7 +188,7 @@ func Deploy(r types.Response) {
 		for i := 0; i < len(app.Instances); i++ {
 			jellyport := app.Instances[i]
 
-			fmt.Println(mesh.Sharks["10.10.10.11"].Info.Ports)
+			//fmt.Println(mesh.Sharks["10.10.10.11"].Info.Ports)
 			// assign deploy to sharks
 			assigned_shark := "http://" + mesh.Sharks["10.10.10.11"].Info.Ip
 
@@ -297,6 +292,11 @@ func Deploy(r types.Response) {
 			app.Sharkports[jellyport] = sharkport
 			app.Deploys[instanceID] = sharkport
 
+			fmt.Println("SETTING")
+			fmt.Println(app.Deploys)
+			fmt.Println(len(app.Deploys))
+			fmt.Println(mesh.Projects[project_name].DEVnext.Apps[app_name].Deploys)
+
 			for domain_key := range app.Domains {
 				if len(app.Domains[domain_key]) == 0 {
 					//app.Domains[domain_key] = make([]string, len(app.Instances))
@@ -307,10 +307,12 @@ func Deploy(r types.Response) {
 			}
 
 			// todo: not sure we need this now that the shark is selecting available ports automatically
-			fmt.Println(mesh.Sharks["10.10.10.11"].Info.Ports)
-			mesh.Sharks["10.10.10.11"].Info.Ports = append(mesh.Sharks["10.10.10.11"].Info.Ports, sharkport_port)
-			fmt.Println(mesh.Sharks["10.10.10.11"].Info.Ports)
+			//fmt.Println(mesh.Sharks["10.10.10.11"].Info.Ports)
+			//mesh.Sharks["10.10.10.11"].Info.Ports = append(mesh.Sharks["10.10.10.11"].Info.Ports, sharkport_port)
+			//fmt.Println(mesh.Sharks["10.10.10.11"].Info.Ports)
 		}
+
+		mesh.Projects[project_name].Temp.Apps[app_name] = app
 
 	}
 	// todo: this part should wait for all success signals from jellyfish, for now we assume the deploy was successfull
@@ -343,16 +345,24 @@ func Deploy(r types.Response) {
 	body, err := ioutil.ReadAll(res.Body)
 	fmt.Println(string(body))
 	// todo: convert dev-next branch variable to DEVnext Project env name so it works cross env
-
+	fmt.Println("TEETS")
+	fmt.Println(mesh.Projects[project_name].DEVnext)
+	fmt.Println(mesh.Projects[project_name].Temp)
 	// issue take down to sharks where devnext apps are hosted.
 	for app_name := range mesh.Projects[project_name].DEVnext.Apps {
+		fmt.Println("))))removing")
+		fmt.Println(app_name)
 		app := mesh.Projects[project_name].DEVnext.Apps[app_name]
+		fmt.Println("GETTING")
+		fmt.Println(app.Deploys)
+		fmt.Println(len(app.Deploys))
 		for instanceID := range app.Deploys {
+			fmt.Println(instanceID)
 			sharkport := app.Deploys[instanceID]
 
 			sharkport_ip := strings.SplitAfter(sharkport, ":")[0]
 			// todo: send request to shark to take down
-			res, err := http.PostForm(sharkport_ip+"/project/remove", url.Values{"instanceID": {instanceID}})
+			res, err := http.PostForm("http://"+sharkport_ip+"80/project/remove", url.Values{"instanceID": {instanceID}})
 			if err != nil {
 				fmt.Println("failed to remove instance error: ", err.Error())
 				return
@@ -365,7 +375,15 @@ func Deploy(r types.Response) {
 
 	// clean up Temp env.
 	mesh.Projects[project_name].DEVnext = mesh.Projects[project_name].Temp
+
+	fmt.Println("TEST")
+	fmt.Println(mesh.Projects[project_name].DEVnext)
+	fmt.Println(mesh.Projects[project_name].Temp)
+
 	mesh.Projects[project_name].Temp = config.DashConfig{}
+	fmt.Println("TOAST")
+	fmt.Println(mesh.Projects[project_name].DEVnext)
+	fmt.Println(mesh.Projects[project_name].Temp)
 
 	fmt.Println("success")
 
@@ -379,48 +397,6 @@ type ApiRes struct {
 		Errors []string `json:"errors"`
 	} `json:"meta"`
 	Data map[string]interface{} `json:"data"`
-}
-
-/*
-	Sharks is a map of Shark servers and their available resources
-	todo: find most efficient mechanism for finding available space for a given set of requirements.
-	Mesh.Sharks[ip_address]struct{}
-
-	Deploys is a map of project/env deploys, which shark they're on
-	Mesh.Projects[deploy_id].Shark
-*/
-type Mesh struct {
-	Sharks   map[string]*Shark
-	Projects map[string]*Project
-}
-
-type Project struct {
-	Info struct {
-		GITrepo   string // /coral/chalhkq/highfin/code.git.. may support github git hosting
-		Deploying string // a string ie: devnext, devcurrent, etc. of the currently deploying env.
-	}
-	DEVnext    config.DashConfig // map[appPart]
-	QAnext     config.DashConfig
-	DEVcurrent config.DashConfig
-	QAcurrent  config.DashConfig
-	PROD       config.DashConfig
-	Temp       config.DashConfig // temporary. a project can deploy one env at a time. if successful it'll replace that env. otherwise Temp will just be cleared unapologetically
-}
-
-type Shark struct {
-	Info struct {
-		Ip          string   // the shark's private ip for octopus to connect to
-		Num_deploys int      // num deploys on the shark
-		Ports       []string // exposed ports
-	}
-	Cpu struct {
-		Total     int
-		Available int
-	}
-	Ram struct {
-		Total     int
-		Available int
-	}
 }
 
 // type Env struct {

@@ -178,6 +178,7 @@ func Deploy(r types.Response) {
 func Remove(r types.Response) {
 	instanceID := r.Req.FormValue("instanceID")
 
+	fmt.Println("removing:" + instanceID)
 	err := exec.Command(`docker`, `rm`, `-f`, `e`+instanceID).Run()
 	if err != nil {
 		fmt.Println(err)

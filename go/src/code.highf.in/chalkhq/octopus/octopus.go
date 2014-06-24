@@ -12,6 +12,7 @@ Octopus is a Shark & Sqid co-ordinator.
 import (
 	"bytes"
 	"code.highf.in/chalkhq/octopus/api/project"
+	"code.highf.in/chalkhq/shared/persistence"
 	"code.highf.in/chalkhq/shared/types"
 	"fmt"
 	"log"
@@ -35,6 +36,9 @@ var (
 
 // todo: why are we compiling less on the server and not the client? for javascript-less clients? but then our whole app is dead
 
+var mesh types.Mesh
+var meshChanged bool
+
 func init() {
 	var whoami bytes.Buffer
 	cmd := exec.Command("whoami")
@@ -50,6 +54,20 @@ func init() {
 func main() {
 	fmt.Println("running octopus")
 	config := GetConfig()
+
+	mesh = types.Mesh{}
+	mesh.Sharks = make(map[string]*types.Shark)
+	mesh.Projects = make(map[string]*types.Project)
+	mesh.Projects["default"] = &types.Project{}
+	fmt.Println("mitsubishi")
+	//mesh.Projects[project_name] = &types.Project{}
+	mesh.Sharks["10.10.10.11"] = &types.Shark{}
+
+	mesh.Sharks["10.10.10.11"].Info.Ip = "10.10.10.11"
+	mesh.Sharks["10.10.10.11"].Info.Num_deploys = 0
+
+	go persistence.GetData(&mesh, "/octopus/mesh.json")
+	go persistence.PersistData(&mesh, "/octopus/mesh.json", &meshChanged)
 
 	UpdateSalmon()
 
@@ -94,13 +112,24 @@ func router(r types.Response) {
 	fmt.Println("router")
 	switch r.Req.URL.Path {
 	case "/project/create":
+		defer func() { meshChanged = true }()
 		fmt.Println("create called")
 		project.Create(r)
 
 	case "/project/deploy":
+		defer func() { meshChanged = true }()
 		// todo:reading the -.json file should consult it's list of sharks for available resources
 		// basic wiring: checkout dev-next branch, read -.json file, tar, upload to shark.
-		project.Deploy(r)
+		fmt.Println("BOAT")
+		if mesh.Projects["chalkhq_highfin"] != nil {
+			fmt.Println(mesh.Projects["chalkhq_highfin"].DEVnext)
+			fmt.Println(mesh.Projects["chalkhq_highfin"].Temp)
+		}
+
+		project.Deploy(r, &mesh)
+		fmt.Println("BAKE")
+		fmt.Println(mesh.Projects["chalkhq_highfin"].DEVnext)
+		fmt.Println(mesh.Projects["chalkhq_highfin"].Temp)
 
 	case "/salmon/update":
 		UpdateSalmon()
