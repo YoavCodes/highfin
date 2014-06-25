@@ -16,6 +16,7 @@ func PersistData(object interface{}, filename string, changed *bool) {
 		tmpFilename := filename + ".tmp"
 		time.Sleep(2 * time.Second)
 		if *changed == true {
+			*changed = false
 			file, err := os.Create(tmpFilename)
 			if err != nil {
 				fmt.Println("Error creating file " + tmpFilename)
