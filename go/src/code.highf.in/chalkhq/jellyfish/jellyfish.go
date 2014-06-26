@@ -2,20 +2,54 @@ package main
 
 import (
 	"code.highf.in/chalkhq/shared/config"
+
+	//"code.highf.in/chalkhq/shared/types"
 	//"code.highf.in/chalkhq/shared/nodejs"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"os"
 	"os/exec"
+	"strings"
+	//"strconv"
+	//"strings"
 	//"strings"
 )
 
 const squid_port = ":8081"
 
+var jellyports map[string]string
+
+type JellyProxy struct{}
+
+func (jellyProxy *JellyProxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	// reverse proxy based on req.HOST to sharkport
+	jellyport := strings.SplitAfter(req.Host, ":")[1]
+	Log("proxy-jellyport===" + jellyport)
+	sharkport := jellyports[jellyport]
+
+	Log("proxy-sharkport===" + sharkport)
+	Log("things: " + req.Host + "/ /" + req.RequestURI)
+
+	director := func(target *http.Request) {
+		target.URL.Scheme = "http" // todo: change to https between containers
+		target.URL.Host = sharkport
+		target.URL.Path = req.URL.Path
+		target.URL.RawQuery = req.URL.RawQuery
+	}
+
+	p := httputil.ReverseProxy{Director: director}
+
+	p.ServeHTTP(w, req)
+
+}
+
 func main() {
 	fmt.Println("starting jellyfish...")
 	//mesh := make(map[string]string)
+
+	jellyports = make(map[string]string)
 
 	// get config
 	dashConfig := config.GetDashConfig("/code/")
@@ -34,6 +68,46 @@ func main() {
 	app_name := string(os.Args[1])
 	app := dashConfig.Apps[app_name] // specified in the Dockerfile ENTRYPOINT line by octopus
 
+	//instance_name := string(os.Args[2]) // for announcing itself to other jellyfish
+
+	http.HandleFunc("/___api", func(w http.ResponseWriter, r *http.Request) {
+		// reverse proxy based on req.HOST to sharkport
+
+		sharkports := r.FormValue("sharkports")
+
+		fmt.Println(sharkports)
+
+		err := json.Unmarshal([]byte(sharkports), &jellyports)
+
+		if err != nil {
+			fmt.Println("failed to unmarshal response")
+			fmt.Println(err)
+		}
+		for jellyport := range jellyports {
+			//sharkport := jellyports[jellyport]
+			Log("jellyfish: listening on " + jellyport)
+			go http.ListenAndServe(":"+jellyport, &JellyProxy{})
+
+		}
+
+		return
+		// for jellyport := range jellyports {
+		// 	sharkport := jellyports[jellyport]
+		// 	Log("proxyo-jelloport:" + sharkport + "//" + jellyport)
+		// 	// todo: what is the significance of 10.10.10.99 range, get it programmatically
+		// 	err = exec.Command(`iptables`, `-t`, `nat`, `-A`, `OUTPUT`, `-p`, `tcp`, `-d`, `10.10.10.99`, `--dport`, jellyport, `-j`, `DNAT`, `--to`, sharkport).Run()
+		// 	//err = exec.Command(`/sbin/iptables`, `-t`, `nat`, `-A`, `OUTPUT`, `-p`, `tcp`, `-d`, `10.10.10.99`, `--dport`, `6000`, `-j`, `DNAT`, `--to`, `10.10.10.11:49225`).Run()
+
+		// 	// iptables -t nat -A OUTPUT -p tcp -d 10.10.10.99 --dport 6100 -j DNAT --to 10.10.10.11:49234
+		// 	// iptables -t nat -A OUTPUT -p tcp -d 10.10.10.99 --dport 6000 -j DNAT --to 10.10.10.11:49236
+		// 	if err != nil {
+		// 		Log("error: " + err.Error())
+		// 	}
+
+		// }
+
+	})
+
 	// execute all the parts of the app
 	for k := 0; k < len(app.Execs); k++ {
 		appPart := app.Execs[k]
@@ -44,7 +118,11 @@ func main() {
 			//mesh[mapping.Path] = "127.0.0.1:" + mapping.Port
 			fmt.Println("adding path: " + mapping.Path + " - " + mapping.Port)
 			http.HandleFunc(mapping.Path, func(w http.ResponseWriter, req *http.Request) {
-
+				Log("===Request===")
+				Log(mapping.Path)
+				Log(mapping.Port)
+				Log(req.URL.Path)
+				Log("===END===")
 				fmt.Println("jellyfish")
 				fmt.Println(string(req.Host + req.URL.Path))
 				director := func(target *http.Request) {
@@ -59,6 +137,7 @@ func main() {
 				p.ServeHTTP(w, req)
 
 			})
+
 		}
 
 		// install app, should happen once
@@ -145,4 +224,11 @@ func main() {
 
 	http.ListenAndServe(squid_port, nil)
 	fmt.Println("Listening on " + squid_port)
+
+}
+
+func Log(msg string) {
+	// very temporary logging utility
+	_, _ = http.Get("http://10.10.10.5/" + msg)
+
 }

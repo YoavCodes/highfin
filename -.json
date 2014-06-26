@@ -4,7 +4,7 @@
 			"lang": "golang",
 			"version": "1.2.1",
 			"main": "code.highf.in/chalkhq/octopus",
-			"watch": ["./go/src/code.highf.in/chalkhq/octopus"],
+			"watch": ["./go/src/code.highf.in/chalkhq/octopus", "./go/src/code.highf.in/chalkhq/shared"],
 			"instances": ["1:80"]
 		}]
 	},
@@ -24,7 +24,7 @@
 			"lang": "golang",
 			"version": "1.2.1",
 			"main": "code.highf.in/chalkhq/squid",
-			"watch": ["./go/src/code.highf.in/chalkhq/squid"],
+			"watch": ["./go/src/code.highf.in/chalkhq/squid", "./go/src/code.highf.in/chalkhq/shared"],
 			"instances": ["1:80"]
 		}]
 	},

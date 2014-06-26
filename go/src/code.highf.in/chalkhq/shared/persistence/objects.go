@@ -20,12 +20,14 @@ func PersistData(object interface{}, filename string, changed *bool) {
 			file, err := os.Create(tmpFilename)
 			if err != nil {
 				fmt.Println("Error creating file " + tmpFilename)
+				return
 			}
 			defer file.Close()
 
 			objectJson, err := json.MarshalIndent(object, "", " ")
 			if err != nil {
 				fmt.Println("Error Marshalling object")
+				return
 			}
 
 			file.Write(objectJson)

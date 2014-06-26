@@ -115,6 +115,9 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 	// todo: at this point it should find a shark, and assign the sharkports and read the domains /ports from json object
 	// preceding the deploy-loop below, squid should be notified with new routing information and activate private routing
 
+	// sharkports for the whole deploy
+	sharkports := make(map[string]string)
+
 	for app_name := range mesh.Projects[project_name].Temp.Apps {
 
 		app := mesh.Projects[project_name].Temp.Apps[app_name]
@@ -139,7 +142,9 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 		//_ = exec.Command(`cp`, `/vagrant/octopus/docker/Dockerfile`, app_folder+"/Dockerfile").Run()
 		// create docker file
 		//newline :=
-		docker_instructions := "FROM google/debian:wheezy\n" //note: must use "" instead of `` for \n to resolve to newline and not literally \n
+		// todo: we need to create a proper docker basebox
+		docker_instructions := "FROM debian:7.4\n"                 //note: must use "" instead of `` for \n to resolve to newline and not literally \n
+		docker_instructions += "RUN apt-get -y install iptables\n" // for some reason iptables isn't in the default debian image.
 		docker_instructions += "ADD . /code\n"
 
 		for i := 0; i < len(app.Execs); i++ {
@@ -163,6 +168,7 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 
 		}
 
+		// todo: rewrite the docker file from docker_instructions + instance name for each instance. to pass in the instance id to each one
 		docker_instructions += "ENTRYPOINT /code/jellyfish " + app_name
 
 		err := ioutil.WriteFile(app_folder+`/Dockerfile`, []byte(docker_instructions), 777)
@@ -290,6 +296,8 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 			// if success
 
 			app.Sharkports[jellyport] = sharkport
+			sharkports[jellyport] = sharkport
+
 			app.Deploys[instanceID] = sharkport
 
 			fmt.Println("SETTING")
@@ -317,7 +325,30 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 	}
 	// todo: this part should wait for all success signals from jellyfish, for now we assume the deploy was successfull
 
+	// ping each jellyfish with sharkports of others in the deploy
+	sharkportJSON, _ := json.Marshal(sharkports)
+
+	time.Sleep(10 * time.Second)
+
+	for jellyport := range sharkports {
+		//sharkport_ip := strings.SplitAfter(sharkports[jellyport], ":")[0]
+		sharkport := sharkports[jellyport]
+
+		res, err := http.PostForm("http://"+sharkport+"/___api", url.Values{"sharkports": {string(sharkportJSON)}})
+		if err != nil {
+			fmt.Println("request error: ", err.Error())
+			return
+		}
+
+		body, _ := ioutil.ReadAll(res.Body)
+		fmt.Println(string(body))
+		res.Body.Close()
+	}
+
 	// todo: send signal to squid to enable domain switch
+	// iptables -A FORWARD -p tcp -d 127.0.0.1 --dport 6101 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+	// iptables -t nat -A PREROUTING -p tcp -d 9.9.9.9 --dport 6105 -j DNAT --to 10.10.10.11:49190
+	// iptables -t nat -A POSTROUTING -p tcp --dport 6106 -o eth0 -j SNAT --to-source 10.10.10.11:49190
 
 	var domainMap map[string][]string
 
@@ -386,6 +417,7 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 	fmt.Println(mesh.Projects[project_name].Temp)
 
 	fmt.Println("success")
+	// todo: remove old docker images
 
 	r.Kill(200)
 

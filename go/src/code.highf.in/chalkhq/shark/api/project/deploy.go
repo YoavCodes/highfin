@@ -136,8 +136,9 @@ func Deploy(r types.Response) {
 	//sharkport = 0
 
 	// run the container
-	//cmd = exec.Command(`docker`, `run`, `-d`, `-p`, sharkport_port+`:8081`, `--name=`+instanceID, instanceID)
+
 	cmd = exec.Command(`docker`, `run`, `-d`, `-p`, `:8081`, `--name=e`+instanceID, instanceID)
+	//cmd = exec.Command(`docker`, `run`, `-p`, `:8081`, `--name=e`+instanceID, instanceID)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
