@@ -74,9 +74,9 @@ func main() {
 	//domainMap["app1.test"] = "10.10.10.11:5000"
 
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		fmt.Println(string(req.Host + req.URL.Path))
+		//fmt.Println(string(req.Host + req.URL.Path))
 
-		fmt.Println(".....", len(domainMap[req.Host].Sharkports))
+		//fmt.Println(".....", len(domainMap[req.Host].Sharkports))
 
 		if _, ok := domainMap[req.Host]; ok == false {
 			// domain mapping doesn't exist, return 404
@@ -93,7 +93,7 @@ func main() {
 			bindex := domainMap[req.Host].Bindex
 			//domainMap[req.Host].Bindex = int(math.Mod(float64(domainMap[req.Host].Bindex+1), float64(len(domainMap[req.Host].Sharkports))))
 			//domainMap[req.Host].Request_count++
-			fmt.Println(domainMap[req.Host].Sharkports[bindex])
+			//fmt.Println(domainMap[req.Host].Sharkports[bindex])
 			target.URL.Scheme = "http"
 			target.URL.Host = domainMap[req.Host].Sharkports[bindex]
 			target.URL.Path = req.URL.Path

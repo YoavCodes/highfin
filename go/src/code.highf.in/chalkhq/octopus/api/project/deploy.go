@@ -46,14 +46,14 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 
 	//mesh.Projects[project_name].Info = &ProjectInfo{}
 
-	fmt.Println(mesh.Projects[account+"_"+project].Info.GITrepo)
+	// fmt.Println(mesh.Projects[account+"_"+project].Info.GITrepo)
 
 	if account == "" || project == "" || branch == "" {
 		r.AddError("missing variables. Expected [account, project, branch], got [" + r.Req.FormValue("account") + ", " + r.Req.FormValue("project") + ", " + r.Req.FormValue("branch") + "]")
 		r.Kill(422)
 		return
 	}
-	fmt.Println(branch)
+	// fmt.Println(branch)
 
 	// randomly generate a folder
 	checkout_folder := `/octopus/tmp/` + account + `/` + project + `/` + branch
@@ -100,9 +100,9 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 	// at this point there's an untarred export of the latest of specified branch
 
 	// get the dashconfig
-	fmt.Println(checkout_folder + "/")
+	// fmt.Println(checkout_folder + "/")
 	mesh.Projects[account+"_"+project].Temp = config.GetDashConfig(checkout_folder + "/")
-	fmt.Println(mesh.Projects[project_name].Temp.Apps)
+	// fmt.Println(mesh.Projects[project_name].Temp.Apps)
 	if len(mesh.Projects[project_name].Temp.Apps) == 0 {
 		r.AddError("-.json file is empty or not found")
 		r.Kill(500)
@@ -110,7 +110,7 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 		//todo: cleanup on 500, maybe defers
 		return
 	}
-	fmt.Println(mesh.Projects[project_name].Temp)
+	// fmt.Println(mesh.Projects[project_name].Temp)
 
 	// todo: at this point it should find a shark, and assign the sharkports and read the domains /ports from json object
 	// preceding the deploy-loop below, squid should be notified with new routing information and activate private routing
@@ -131,6 +131,8 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 		c.Stdout = os.Stdout
 		_ = c.Run()*/
 
+		_ = exec.Command(`mkdir`, `-p`, app_folder).Run()
+
 		_ = exec.Command(`cp`, checkout_folder+`/-.json`, app_folder+`/-.json`).Run()
 
 		//_ = exec.Command(`mkdir`, `-p`, app_folder).Run() // this should already exist
@@ -143,33 +145,60 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 		// create docker file
 		//newline :=
 		// todo: we need to create a proper docker basebox
-		docker_instructions := "FROM debian:7.4\n"                 //note: must use "" instead of `` for \n to resolve to newline and not literally \n
-		docker_instructions += "RUN apt-get -y install iptables\n" // for some reason iptables isn't in the default debian image.
-		docker_instructions += "ADD . /code\n"
+		docker_instructions := ""
 
 		for i := 0; i < len(app.Execs); i++ {
 			appPart := app.Execs[i]
 
 			if appPart.Lang == "nodejs" {
 
+				docker_instructions += "FROM debian:7.4\n" //note: must use "" instead of `` for \n to resolve to newline and not literally \n
+				docker_instructions += "ADD . /code\n"
+				docker_instructions += "ENTRYPOINT /code/jellyfish " + app_name
+
 				// the docker image is actually built on shark, octopus doesn't need node.js versions installed
 				nodejs.InstallNode(appPart.Version)
 				_ = exec.Command(`mkdir`, `-p`, app_folder+"/__dep/n/").Run()
 				_ = exec.Command(`cp`, `-r`, nodejs.BinFolder(appPart.Version), app_folder+`/__dep/n/`).Run()
 				//docker_instructions += "ADD /usr/local/n/" + app.Version + " /usr/local/n/" + app.Version + "\n"
-				fmt.Println("node folder:")
+				// fmt.Println("node folder:")
 				/*c := exec.Command(`ls`, app_folder+`/__dep/n/`+app.Version+"/")
 				c.Stderr = os.Stderr
 				c.Stdout = os.Stdout
 				_ = c.Run()
 				fmt.Println("======")*/
 
+			} else if appPart.Lang == "golang" {
+				docker_instructions += "FROM debian:7.4\n" //note: must use "" instead of `` for \n to resolve to newline and not literally \n
+				docker_instructions += "ADD . /code\n"
+				docker_instructions += "ENTRYPOINT /code/jellyfish " + app_name
+			} else if appPart.Lang == "mongodb" {
+				//docker_instructions += "FROM debian:7.4\n"
+				docker_instructions += "FROM ubuntu:12.04\n"
+				docker_instructions += "ADD . /code\n"
+				docker_instructions += "RUN echo 'deb http://archive.ubuntu.com/ubuntu precise main universe' > /etc/apt/sources.list\n"
+				docker_instructions += "RUN apt-get -y update\n"
+				docker_instructions += "RUN apt-key adv --keyserver keyserver.ubuntu.com --recv 7F0CEB10\n"
+				docker_instructions += "RUN echo 'deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' | tee -a /etc/apt/sources.list.d/10gen.list\n"
+				docker_instructions += "RUN apt-get update\n"
+				docker_instructions += "RUN apt-get -y install apt-utils\n"
+				docker_instructions += "RUN apt-get -y install mongodb-10gen\n"
+				// todo: this should be an attached volume
+				docker_instructions += "RUN mkdir -p /data/db\n"
+				//docker_instructions += "RUN \n"
+				//docker_instructions += "ENTRYPOINT /code/jellyfish " + app_name
+				docker_instructions += "ENTRYPOINT /usr/bin/mongod --smallfiles\n"
+			} else {
+				// todo: errors should cleanup steps that have already happened
+				r.AddError("-.json file misconfiguration")
+				r.AddError("app " + app_name + " has Lang " + appPart.Lang + ", expecting one of [nodejs, golang, mongodb]")
+				r.Kill(422)
+				return
 			}
 
 		}
 
 		// todo: rewrite the docker file from docker_instructions + instance name for each instance. to pass in the instance id to each one
-		docker_instructions += "ENTRYPOINT /code/jellyfish " + app_name
 
 		err := ioutil.WriteFile(app_folder+`/Dockerfile`, []byte(docker_instructions), 777)
 
@@ -184,6 +213,19 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 
 		tar_file := `/coral/` + account + `/` + project + `/` + branch + `/` + app_name + ".tar"
 
+		// tar branch for re-deploys
+		_ = exec.Command(`rm`, `-R`, tar_file).Run() // todo: only remove this on new code, a plain deploy should use the existing tar files
+
+		cmd = exec.Command(`tar`, `-c`, `-f`, tar_file, `-C`, app_folder, `.`)
+		cmd.Stderr = os.Stderr
+		cmd.Stdout = os.Stdout
+		cmd.Run()
+		if err != nil {
+			r.AddError("failed to create tar file")
+			r.Kill(500)
+			return
+		}
+
 		// todo: run tests and build
 		// todo: tests should only be run in the final docker container setup, so dev-next test that uses a database can actually access the database container
 
@@ -191,25 +233,14 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 		app.Sharkports = make(map[string]string)
 		app.Deploys = make(map[string]string)
 
+		// todo: should loop through all apps preparing them, then start another app loop for instances // interacting with shark via goroutines
+
 		for i := 0; i < len(app.Instances); i++ {
 			jellyport := app.Instances[i]
 
 			//fmt.Println(mesh.Sharks["10.10.10.11"].Info.Ports)
 			// assign deploy to sharks
 			assigned_shark := "http://" + mesh.Sharks["10.10.10.11"].Info.Ip
-
-			// tar branch for re-deploys
-			_ = exec.Command(`rm`, `-R`, tar_file).Run() // todo: only remove this on new code, a plain deploy should use the existing tar files
-
-			cmd = exec.Command(`tar`, `-c`, `-f`, tar_file, `-C`, app_folder, `.`)
-			cmd.Stderr = os.Stderr
-			cmd.Stdout = os.Stdout
-			cmd.Run()
-			if err != nil {
-				r.AddError("failed to create tar file")
-				r.Kill(500)
-				return
-			}
 
 			// upload
 			var b bytes.Buffer
@@ -259,7 +290,7 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 			req, err := http.NewRequest("POST", assigned_shark+`/project/deploy`, &b)
 
 			req.Header.Set("Content-Type", w.FormDataContentType())
-			fmt.Println("attempting request")
+			// fmt.Println("attempting request")
 			client := &http.Client{}
 			res, err := client.Do(req)
 			if err != nil {
@@ -272,7 +303,7 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 
 			body, _ := ioutil.ReadAll(res.Body)
 
-			fmt.Println(string(body))
+			// fmt.Println(string(body))
 
 			apiRes := ApiRes{}
 
@@ -283,16 +314,22 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 				fmt.Println(err)
 			}
 
-			fmt.Println(apiRes.Meta.Status)
+			// fmt.Println(apiRes.Meta.Status)
 
-			fmt.Println(apiRes)
+			// fmt.Println(apiRes)
+			if apiRes.Data["sharkport_port"] == nil {
+				r.AddError("error: shark failed")
+				r.Kill(500)
+				mesh.Projects[project_name].Temp = config.DashConfig{}
+				return
+			}
 
 			var sharkport_port string = apiRes.Data["sharkport_port"].(string)
 			sharkport := mesh.Sharks["10.10.10.11"].Info.Ip + ":" + sharkport_port
 
-			fmt.Println("sharkport: " + sharkport)
-			fmt.Println("instanceID: " + instanceID)
-			fmt.Println("jellyport: " + jellyport)
+			// fmt.Println("sharkport: " + sharkport)
+			// fmt.Println("instanceID: " + instanceID)
+			// fmt.Println("jellyport: " + jellyport)
 			// if success
 
 			app.Sharkports[jellyport] = sharkport
@@ -300,18 +337,18 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 
 			app.Deploys[instanceID] = sharkport
 
-			fmt.Println("SETTING")
-			fmt.Println(app.Deploys)
-			fmt.Println(len(app.Deploys))
-			fmt.Println(mesh.Projects[project_name].DEVnext.Apps[app_name].Deploys)
+			// fmt.Println("SETTING")
+			// fmt.Println(app.Deploys)
+			// fmt.Println(len(app.Deploys))
+			// fmt.Println(mesh.Projects[project_name].DEVnext.Apps[app_name].Deploys)
 
 			for domain_key := range app.Domains {
 				if len(app.Domains[domain_key]) == 0 {
 					//app.Domains[domain_key] = make([]string, len(app.Instances))
 				}
 				app.Domains[domain_key] = append(app.Domains[domain_key], sharkport)
-				fmt.Println("--")
-				fmt.Println(app.Domains[domain_key])
+				// fmt.Println("--")
+				// fmt.Println(app.Domains[domain_key])
 			}
 
 			// todo: not sure we need this now that the shark is selecting available ports automatically
@@ -328,7 +365,7 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 	// ping each jellyfish with sharkports of others in the deploy
 	sharkportJSON, _ := json.Marshal(sharkports)
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(30 * time.Second)
 
 	for jellyport := range sharkports {
 		//sharkport_ip := strings.SplitAfter(sharkports[jellyport], ":")[0]
@@ -355,17 +392,17 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 	domainMap = make(map[string][]string)
 
 	for app_name := range mesh.Projects[project_name].Temp.Apps {
-		fmt.Println("=====" + app_name)
+		// fmt.Println("=====" + app_name)
 		app := mesh.Projects[project_name].Temp.Apps[app_name]
 		for domain_name := range app.Domains {
-			fmt.Println("=======" + domain_name)
+			// fmt.Println("=======" + domain_name)
 			domainMap[domain_name] = app.Domains[domain_name]
 		}
 	}
 
 	domainMapJSON, _ := json.Marshal(domainMap)
-	fmt.Println("domainMapJSON_+_+_+")
-	fmt.Println(string(domainMapJSON))
+	// fmt.Println("domainMapJSON_+_+_+")
+	// fmt.Println(string(domainMapJSON))
 
 	res, err := http.PostForm("http://10.10.10.5:8282/route/update", url.Values{"account": {account}, "project": {project}, "branch": {branch}, "domains": {string(domainMapJSON)}})
 	if err != nil {
@@ -376,19 +413,19 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 	body, err := ioutil.ReadAll(res.Body)
 	fmt.Println(string(body))
 	// todo: convert dev-next branch variable to DEVnext Project env name so it works cross env
-	fmt.Println("TEETS")
-	fmt.Println(mesh.Projects[project_name].DEVnext)
-	fmt.Println(mesh.Projects[project_name].Temp)
+	// fmt.Println("TEETS")
+	// fmt.Println(mesh.Projects[project_name].DEVnext)
+	// fmt.Println(mesh.Projects[project_name].Temp)
 	// issue take down to sharks where devnext apps are hosted.
 	for app_name := range mesh.Projects[project_name].DEVnext.Apps {
-		fmt.Println("))))removing")
-		fmt.Println(app_name)
+		// fmt.Println("))))removing")
+		// fmt.Println(app_name)
 		app := mesh.Projects[project_name].DEVnext.Apps[app_name]
-		fmt.Println("GETTING")
-		fmt.Println(app.Deploys)
-		fmt.Println(len(app.Deploys))
+		// fmt.Println("GETTING")
+		// fmt.Println(app.Deploys)
+		// fmt.Println(len(app.Deploys))
 		for instanceID := range app.Deploys {
-			fmt.Println(instanceID)
+			// fmt.Println(instanceID)
 			sharkport := app.Deploys[instanceID]
 
 			sharkport_ip := strings.SplitAfter(sharkport, ":")[0]
@@ -407,14 +444,14 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 	// clean up Temp env.
 	mesh.Projects[project_name].DEVnext = mesh.Projects[project_name].Temp
 
-	fmt.Println("TEST")
-	fmt.Println(mesh.Projects[project_name].DEVnext)
-	fmt.Println(mesh.Projects[project_name].Temp)
+	// fmt.Println("TEST")
+	// fmt.Println(mesh.Projects[project_name].DEVnext)
+	// fmt.Println(mesh.Projects[project_name].Temp)
 
 	mesh.Projects[project_name].Temp = config.DashConfig{}
-	fmt.Println("TOAST")
-	fmt.Println(mesh.Projects[project_name].DEVnext)
-	fmt.Println(mesh.Projects[project_name].Temp)
+	// fmt.Println("TOAST")
+	// fmt.Println(mesh.Projects[project_name].DEVnext)
+	// fmt.Println(mesh.Projects[project_name].Temp)
 
 	fmt.Println("success")
 	// todo: remove old docker images

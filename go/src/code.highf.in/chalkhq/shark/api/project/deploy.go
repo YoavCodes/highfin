@@ -104,7 +104,7 @@ func Deploy(r types.Response) {
 	}
 
 	// get config
-	dashConfig := config.GetDashConfig(`/shark/tmp/` + instanceID)
+	dashConfig := config.GetDashConfig(`/shark/tmp/` + instanceID + "/-.json")
 	app := dashConfig.Apps[app_name]
 	fmt.Println(app)
 
@@ -136,8 +136,19 @@ func Deploy(r types.Response) {
 	//sharkport = 0
 
 	// run the container
+	// todo: cleanup, should differentiate db here, jellyfish should worry about that
+	// todo: --smallfiles should be specified in docker file
+	fmt.Println("app name: " + app_name)
+	port := "8081"
+	cmd = exec.Command(`docker`, `run`, `-d`, `-p`, ":"+port, `--name=e`+instanceID, instanceID)
 
-	cmd = exec.Command(`docker`, `run`, `-d`, `-p`, `:8081`, `--name=e`+instanceID, instanceID)
+	if app_name == "db" {
+		port = "27017"
+		cmd = exec.Command(`docker`, `run`, `-d`, `-p`, ":"+port, `--name=e`+instanceID, instanceID, "--smallfiles")
+	}
+
+	fmt.Println("port: " + port)
+
 	//cmd = exec.Command(`docker`, `run`, `-p`, `:8081`, `--name=e`+instanceID, instanceID)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -152,7 +163,7 @@ func Deploy(r types.Response) {
 	}
 
 	// get the port
-	cmd = exec.Command(`docker`, `port`, `e`+instanceID, `8081`)
+	cmd = exec.Command(`docker`, `port`, `e`+instanceID, port)
 	stdout, err := cmd.StdoutPipe()
 	cmd.Start()
 
@@ -168,6 +179,7 @@ func Deploy(r types.Response) {
 	// 	return
 	// }
 
+	// todo: remove .tar and /tmp+instanceID folders
 	sharkport_array := strings.Split(string(sharkport), ":")
 
 	fmt.Println(sharkport_array[1])
@@ -187,5 +199,8 @@ func Remove(r types.Response) {
 		r.Kill(500)
 		return
 	}
+
+	_ = exec.Command(`rm`, `-Rf`, `/shark/tmp/`+instanceID).Run()
+	_ = exec.Command(`rm`, `-Rf`, `/shark/tmp/`+instanceID+".tar").Run()
 	r.Kill(200)
 }

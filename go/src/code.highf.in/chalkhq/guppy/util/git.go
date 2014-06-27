@@ -48,7 +48,14 @@ func Create(account string, project string, email string, server string) {
 func Push(message string) {
 	// todo: run unit tests locally, only continue if passes, unless "commit_if_passes = false" in -.json
 	// wrapper around common git workflow in a frybox
-	cmd := exec.Command("git", "commit", "-a", "-m", message)
+	Log("adding")
+	cmd := exec.Command("git", "add", ".")
+	cmd.Dir = "/vagrant/code"
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	cmd.Run()
+	Log("committing")
+	cmd = exec.Command("git", "commit", "-a", "-m", message)
 	cmd.Dir = "/vagrant/code"
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout

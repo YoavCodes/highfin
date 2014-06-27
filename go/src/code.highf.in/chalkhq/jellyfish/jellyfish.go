@@ -7,6 +7,7 @@ import (
 	//"code.highf.in/chalkhq/shared/nodejs"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"os"
@@ -86,6 +87,8 @@ func main() {
 		for jellyport := range jellyports {
 			//sharkport := jellyports[jellyport]
 			Log("jellyfish: listening on " + jellyport)
+			//go http.ListenAndServe("127.0.0.1:"+jellyport, &JellyProxy{})
+
 			go http.ListenAndServe(":"+jellyport, &JellyProxy{})
 
 		}
@@ -118,11 +121,7 @@ func main() {
 			//mesh[mapping.Path] = "127.0.0.1:" + mapping.Port
 			fmt.Println("adding path: " + mapping.Path + " - " + mapping.Port)
 			http.HandleFunc(mapping.Path, func(w http.ResponseWriter, req *http.Request) {
-				Log("===Request===")
-				Log(mapping.Path)
-				Log(mapping.Port)
-				Log(req.URL.Path)
-				Log("===END===")
+
 				fmt.Println("jellyfish")
 				fmt.Println(string(req.Host + req.URL.Path))
 				director := func(target *http.Request) {
@@ -231,4 +230,29 @@ func Log(msg string) {
 	// very temporary logging utility
 	_, _ = http.Get("http://10.10.10.5/" + msg)
 
+}
+
+func forward(local net.Conn, remoteAddr string) {
+	remote, err := net.Dial("tcp", "", remoteAddr)
+	if remote == nil {
+		fmt.Fprintf(os.Stderr, "remote dial failed: %v\n", err)
+		return
+	}
+	go io.Copy(local, remote)
+	go io.Copy(remote, local)
+}
+
+func proxy(localAddr string, remoteAddr string) {
+
+	local, err := net.Listen("tcp", localAddr)
+	if local == nil {
+		fatal("cannot listen: %v", err)
+	}
+	for {
+		conn, err := local.Accept()
+		if conn == nil {
+			fatal("accept failed: %v", err)
+		}
+		go forward(conn, remoteAddr)
+	}
 }
