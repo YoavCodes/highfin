@@ -374,12 +374,13 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 		res, err := http.PostForm("http://"+sharkport+"/___api", url.Values{"sharkports": {string(sharkportJSON)}})
 		if err != nil {
 			fmt.Println("request error: ", err.Error())
-			return
-		}
 
-		body, _ := ioutil.ReadAll(res.Body)
-		fmt.Println(string(body))
-		res.Body.Close()
+		} else {
+
+			body, _ := ioutil.ReadAll(res.Body)
+			fmt.Println(string(body))
+			res.Body.Close()
+		}
 	}
 
 	// todo: send signal to squid to enable domain switch

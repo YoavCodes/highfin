@@ -7,6 +7,7 @@ import (
 	//"code.highf.in/chalkhq/shared/nodejs"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -89,7 +90,8 @@ func main() {
 			Log("jellyfish: listening on " + jellyport)
 			//go http.ListenAndServe("127.0.0.1:"+jellyport, &JellyProxy{})
 
-			go http.ListenAndServe(":"+jellyport, &JellyProxy{})
+			//go http.ListenAndServe(":"+jellyport, &JellyProxy{})
+			go proxy(":"+jellyport, jellyports[jellyport])
 
 		}
 
@@ -233,7 +235,7 @@ func Log(msg string) {
 }
 
 func forward(local net.Conn, remoteAddr string) {
-	remote, err := net.Dial("tcp", "", remoteAddr)
+	remote, err := net.Dial("tcp", remoteAddr)
 	if remote == nil {
 		fmt.Fprintf(os.Stderr, "remote dial failed: %v\n", err)
 		return
@@ -244,14 +246,14 @@ func forward(local net.Conn, remoteAddr string) {
 
 func proxy(localAddr string, remoteAddr string) {
 
-	local, err := net.Listen("tcp", localAddr)
+	local, _ := net.Listen("tcp", localAddr)
 	if local == nil {
-		fatal("cannot listen: %v", err)
+		//fatal("cannot listen: %v", err)
 	}
 	for {
-		conn, err := local.Accept()
+		conn, _ := local.Accept()
 		if conn == nil {
-			fatal("accept failed: %v", err)
+			//fatal("accept failed: %v", err)
 		}
 		go forward(conn, remoteAddr)
 	}
