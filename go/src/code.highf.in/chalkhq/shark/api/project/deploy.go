@@ -142,10 +142,10 @@ func Deploy(r types.Response) {
 	port := "8081"
 	cmd = exec.Command(`docker`, `run`, `-d`, `-p`, ":"+port, `--name=e`+instanceID, instanceID)
 
-	if app_name == "db" {
-		port = "27017"
-		cmd = exec.Command(`docker`, `run`, `-d`, `-p`, ":"+port, `--name=e`+instanceID, instanceID, "--smallfiles")
-	}
+	// if app_name == "db" {
+	// 	port = "27017"
+	// 	cmd = exec.Command(`docker`, `run`, `-d`, `-p`, ":"+port, `--name=e`+instanceID, instanceID, "--smallfiles")
+	// }
 
 	fmt.Println("port: " + port)
 
@@ -170,6 +170,8 @@ func Deploy(r types.Response) {
 	reader := bufio.NewReader(stdout)
 	sharkport, _, err := reader.ReadLine()
 
+	_ = exec.Command(`rm`, `-Rf`, `/shark/tmp/`+instanceID).Run()
+	_ = exec.Command(`rm`, `-Rf`, `/shark/tmp/`+instanceID+".tar").Run()
 	// err = cmd.Run()
 
 	// if err != nil {
@@ -200,7 +202,16 @@ func Remove(r types.Response) {
 		return
 	}
 
-	_ = exec.Command(`rm`, `-Rf`, `/shark/tmp/`+instanceID).Run()
-	_ = exec.Command(`rm`, `-Rf`, `/shark/tmp/`+instanceID+".tar").Run()
+	// remove all images. note: images in use will be skipped
+	err = exec.Command(`docker`, `rmi`, `$(docker images -q`).Run()
+	if err != nil {
+		fmt.Println(err)
+		r.AddError("failed to remove images")
+		r.Kill(500)
+		return
+	}
+
+	// _ = exec.Command(`rm`, `-Rf`, `/shark/tmp/`+instanceID).Run()
+	// _ = exec.Command(`rm`, `-Rf`, `/shark/tmp/`+instanceID+".tar").Run()
 	r.Kill(200)
 }

@@ -13,7 +13,6 @@ import (
 	"net/http/httputil"
 	"os"
 	"os/exec"
-	"strings"
 	//"strconv"
 	//"strings"
 	//"strings"
@@ -23,29 +22,29 @@ const squid_port = ":8081"
 
 var jellyports map[string]string
 
-type JellyProxy struct{}
+// type JellyProxy struct{}
 
-func (jellyProxy *JellyProxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	// reverse proxy based on req.HOST to sharkport
-	jellyport := strings.SplitAfter(req.Host, ":")[1]
-	Log("proxy-jellyport===" + jellyport)
-	sharkport := jellyports[jellyport]
+// func (jellyProxy *JellyProxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+// 	// reverse proxy based on req.HOST to sharkport
+// 	jellyport := strings.SplitAfter(req.Host, ":")[1]
+// 	Log("proxy-jellyport===" + jellyport)
+// 	sharkport := jellyports[jellyport]
 
-	Log("proxy-sharkport===" + sharkport)
-	Log("things: " + req.Host + "/ /" + req.RequestURI)
+// 	Log("proxy-sharkport===" + sharkport)
+// 	Log("things: " + req.Host + "/ /" + req.RequestURI)
 
-	director := func(target *http.Request) {
-		target.URL.Scheme = "http" // todo: change to https between containers
-		target.URL.Host = sharkport
-		target.URL.Path = req.URL.Path
-		target.URL.RawQuery = req.URL.RawQuery
-	}
+// 	director := func(target *http.Request) {
+// 		target.URL.Scheme = "http" // todo: change to https between containers
+// 		target.URL.Host = sharkport
+// 		target.URL.Path = req.URL.Path
+// 		target.URL.RawQuery = req.URL.RawQuery
+// 	}
 
-	p := httputil.ReverseProxy{Director: director}
+// 	p := httputil.ReverseProxy{Director: director}
 
-	p.ServeHTTP(w, req)
+// 	p.ServeHTTP(w, req)
 
-}
+// }
 
 func main() {
 	fmt.Println("starting jellyfish...")
@@ -95,7 +94,6 @@ func main() {
 
 		}
 
-		return
 		// for jellyport := range jellyports {
 		// 	sharkport := jellyports[jellyport]
 		// 	Log("proxyo-jelloport:" + sharkport + "//" + jellyport)
@@ -116,29 +114,44 @@ func main() {
 	// execute all the parts of the app
 	for k := 0; k < len(app.Execs); k++ {
 		appPart := app.Execs[k]
-		//fmt.Println("appPart " + string(k) + " len: " + string(len(appPart.Endpoints)) + " / " + appPart.Endpoints[0].Path)
-		for i := 0; i < len(appPart.Endpoints); i++ {
-			mapping := appPart.Endpoints[i]
-			// mesh[app1.test] = 127.0.0.1:8080
-			//mesh[mapping.Path] = "127.0.0.1:" + mapping.Port
-			fmt.Println("adding path: " + mapping.Path + " - " + mapping.Port)
-			http.HandleFunc(mapping.Path, func(w http.ResponseWriter, req *http.Request) {
 
-				fmt.Println("jellyfish")
-				fmt.Println(string(req.Host + req.URL.Path))
-				director := func(target *http.Request) {
-					target.URL.Scheme = "http"
-					target.URL.Host = "127.0.0.1:" + mapping.Port
-					target.URL.Path = req.URL.Path
-					target.URL.RawQuery = req.URL.RawQuery
-				}
+		if appPart.Lang == "mongodb" {
+			fmt.Println("is mongo")
+			defer func() {
+				proxy("0.0.0.0"+squid_port, "127.0.0.1:27017")
 
-				p := httputil.ReverseProxy{Director: director}
+			}()
+		} else {
 
-				p.ServeHTTP(w, req)
+			//fmt.Println("appPart " + string(k) + " len: " + string(len(appPart.Endpoints)) + " / " + appPart.Endpoints[0].Path)
+			for i := 0; i < len(appPart.Endpoints); i++ {
+				mapping := appPart.Endpoints[i]
 
-			})
+				// mesh[app1.test] = 127.0.0.1:8080
+				//mesh[mapping.Path] = "127.0.0.1:" + mapping.Port
+				fmt.Println("adding path: " + mapping.Path + " - " + mapping.Port)
+				http.HandleFunc(mapping.Path, func(w http.ResponseWriter, req *http.Request) {
 
+					fmt.Println("jellyfish")
+					fmt.Println(string(req.Host + req.URL.Path))
+					director := func(target *http.Request) {
+						target.URL.Scheme = "http"
+						target.URL.Host = "127.0.0.1:" + mapping.Port
+						target.URL.Path = req.URL.Path
+						target.URL.RawQuery = req.URL.RawQuery
+					}
+
+					p := httputil.ReverseProxy{Director: director}
+
+					p.ServeHTTP(w, req)
+
+				})
+
+			}
+			defer func() {
+				http.ListenAndServe(squid_port, nil)
+				fmt.Println("Listening on " + squid_port)
+			}()
 		}
 
 		// install app, should happen once
@@ -182,38 +195,23 @@ func main() {
 			// if err != nil {
 			// 	fmt.Println(err.Error())
 			// }
+
+		case "golang":
+			fmt.Println("running app..")
+			// todo should support command line params
+			cmd := exec.Command(appPart.Main) //+app.Main)
+			//go cmd.Run()
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			go cmd.Run()
+		case "mongodb":
+			cmd := exec.Command("/usr/bin/mongod", "--smallfiles") //+app.Main)
+			//go cmd.Run()
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			go cmd.Run()
 		}
 	}
-
-	// proxy
-
-	// http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-	// 	fmt.Println("jellyfish")
-	// 	fmt.Println(string(req.Host + req.URL.Path))
-	// 	if _, ok := domainMap[req.Host]; ok == false {
-	// 		// domain mapping doesn't exist, return 404
-
-	// 		scheme := "http"
-	// 		if req.TLS != nil {
-	// 			scheme += "s"
-	// 		}
-
-	// 		w.Write([]byte(`<a href="http://highf.in">HighF.in</a> 404: Sorry ` + scheme + "://" + req.Host + ` doesn't exist. bloop bloop`))
-	// 		return
-	// 	}
-	// 	fmt.Println("test2")
-	// 	director := func(target *http.Request) {
-	// 		target.URL.Scheme = "http"
-	// 		target.URL.Host = domainMap[req.Host]
-	// 		target.URL.Path = req.URL.Path
-	// 		target.URL.RawQuery = req.URL.RawQuery
-	// 	}
-
-	// 	p := httputil.ReverseProxy{Director: director}
-
-	// 	p.ServeHTTP(w, req)
-
-	// })
 
 	// static file handlers
 	for i := 0; i < len(app.Statics); i++ {
@@ -222,9 +220,6 @@ func main() {
 
 		//mesh[static.Path] = static.Dir
 	}
-
-	http.ListenAndServe(squid_port, nil)
-	fmt.Println("Listening on " + squid_port)
 
 }
 
@@ -251,9 +246,9 @@ func proxy(localAddr string, remoteAddr string) {
 		//fatal("cannot listen: %v", err)
 	}
 	for {
-		conn, _ := local.Accept()
-		if conn == nil {
-			//fatal("accept failed: %v", err)
+		conn, err := local.Accept()
+		if err != nil {
+			continue
 		}
 		go forward(conn, remoteAddr)
 	}

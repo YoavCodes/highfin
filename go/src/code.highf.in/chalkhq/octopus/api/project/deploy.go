@@ -117,6 +117,9 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 
 	// sharkports for the whole deploy
 	sharkports := make(map[string]string)
+	sharkportstoloop := make(map[string]string)
+
+	var tcp bool = false
 
 	for app_name := range mesh.Projects[project_name].Temp.Apps {
 
@@ -147,6 +150,10 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 		// todo: we need to create a proper docker basebox
 		docker_instructions := ""
 
+		// todo: should check if app.tcp == true, tcp apps don't have execs,
+		// or you open a new port for each exec, and then have to open them on docker, and then manage which is the http port.
+
+		// todo: this shouldn't be for every exec, building the docker files should happen elsewhere
 		for i := 0; i < len(app.Execs); i++ {
 			appPart := app.Execs[i]
 
@@ -173,6 +180,7 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 				docker_instructions += "ADD . /code\n"
 				docker_instructions += "ENTRYPOINT /code/jellyfish " + app_name
 			} else if appPart.Lang == "mongodb" {
+				tcp = true
 				//docker_instructions += "FROM debian:7.4\n"
 				docker_instructions += "FROM ubuntu:12.04\n"
 				docker_instructions += "ADD . /code\n"
@@ -186,8 +194,8 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 				// todo: this should be an attached volume
 				docker_instructions += "RUN mkdir -p /data/db\n"
 				//docker_instructions += "RUN \n"
-				//docker_instructions += "ENTRYPOINT /code/jellyfish " + app_name
-				docker_instructions += "ENTRYPOINT /usr/bin/mongod --smallfiles\n"
+				docker_instructions += "ENTRYPOINT /code/jellyfish " + app_name
+				//docker_instructions += "ENTRYPOINT /usr/bin/mongod --smallfiles\n"
 			} else {
 				// todo: errors should cleanup steps that have already happened
 				r.AddError("-.json file misconfiguration")
@@ -333,7 +341,12 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 			// if success
 
 			app.Sharkports[jellyport] = sharkport
+
 			sharkports[jellyport] = sharkport
+
+			if tcp == false {
+				sharkportstoloop[jellyport] = sharkport
+			}
 
 			app.Deploys[instanceID] = sharkport
 
@@ -364,24 +377,28 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 
 	// ping each jellyfish with sharkports of others in the deploy
 	sharkportJSON, _ := json.Marshal(sharkports)
-
+	fmt.Println("sharkports")
+	fmt.Println(string(sharkportJSON))
+	fmt.Println("sleeping")
 	time.Sleep(30 * time.Second)
-
-	for jellyport := range sharkports {
+	fmt.Println("waking up")
+	for jellyport := range sharkportstoloop {
 		//sharkport_ip := strings.SplitAfter(sharkports[jellyport], ":")[0]
-		sharkport := sharkports[jellyport]
+		sharkport := sharkportstoloop[jellyport]
+		fmt.Println("updating jellyports on " + sharkport)
 
 		res, err := http.PostForm("http://"+sharkport+"/___api", url.Values{"sharkports": {string(sharkportJSON)}})
 		if err != nil {
 			fmt.Println("request error: ", err.Error())
 
 		} else {
-
+			fmt.Println("request success")
 			body, _ := ioutil.ReadAll(res.Body)
 			fmt.Println(string(body))
 			res.Body.Close()
 		}
 	}
+	fmt.Println("finished updating jellyports")
 
 	// todo: send signal to squid to enable domain switch
 	// iptables -A FORWARD -p tcp -d 127.0.0.1 --dport 6101 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
@@ -393,10 +410,10 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 	domainMap = make(map[string][]string)
 
 	for app_name := range mesh.Projects[project_name].Temp.Apps {
-		// fmt.Println("=====" + app_name)
+		//fmt.Println("=====" + app_name)
 		app := mesh.Projects[project_name].Temp.Apps[app_name]
 		for domain_name := range app.Domains {
-			// fmt.Println("=======" + domain_name)
+			fmt.Println("agregating domain: " + domain_name)
 			domainMap[domain_name] = app.Domains[domain_name]
 		}
 	}
@@ -405,14 +422,17 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 	// fmt.Println("domainMapJSON_+_+_+")
 	// fmt.Println(string(domainMapJSON))
 
+	fmt.Println("updating squid")
 	res, err := http.PostForm("http://10.10.10.5:8282/route/update", url.Values{"account": {account}, "project": {project}, "branch": {branch}, "domains": {string(domainMapJSON)}})
 	if err != nil {
 		fmt.Println("request error: ", err.Error())
-		return
+
+	} else {
+		defer res.Body.Close()
+		body, _ := ioutil.ReadAll(res.Body)
+		fmt.Println(string(body))
 	}
-	defer res.Body.Close()
-	body, err := ioutil.ReadAll(res.Body)
-	fmt.Println(string(body))
+	fmt.Println("removing apps")
 	// todo: convert dev-next branch variable to DEVnext Project env name so it works cross env
 	// fmt.Println("TEETS")
 	// fmt.Println(mesh.Projects[project_name].DEVnext)
