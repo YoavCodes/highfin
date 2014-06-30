@@ -29,6 +29,7 @@ type Exec struct {
 }
 
 type App struct {
+	Type       string              `json:"type"`
 	Execs      []Exec              `json:"exec"`
 	Statics    []Static            `json:"static"`
 	Sharkports map[string]string   `json:"sharkports"` // map[jellyport]sharkport

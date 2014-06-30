@@ -24,7 +24,7 @@ package project
 */
 
 import (
-	"code.highf.in/chalkhq/shared/config"
+	//"code.highf.in/chalkhq/shared/config"
 	//"code.highf.in/chalkhq/shared/nodejs"
 	"bufio"
 	"code.highf.in/chalkhq/shared/types"
@@ -104,9 +104,9 @@ func Deploy(r types.Response) {
 	}
 
 	// get config
-	dashConfig := config.GetDashConfig(`/shark/tmp/` + instanceID + "/-.json")
-	app := dashConfig.Apps[app_name]
-	fmt.Println(app)
+	//dashConfig := config.GetDashConfig(`/shark/tmp/` + instanceID + "/-.json")
+	//app := dashConfig.Apps[app_name]
+	//fmt.Println(app)
 
 	// switch app.Lang {
 	// case "nodejs":
@@ -135,12 +135,13 @@ func Deploy(r types.Response) {
 	// sharkport : jellyfish's port
 	//sharkport = 0
 
+	_ = exec.Command(`mkdir`, `-p`, "/data/"+instanceID+"/db/").Run()
 	// run the container
 	// todo: cleanup, should differentiate db here, jellyfish should worry about that
 	// todo: --smallfiles should be specified in docker file
 	fmt.Println("app name: " + app_name)
 	port := "8081"
-	cmd = exec.Command(`docker`, `run`, `-d`, `-p`, ":"+port, `--name=e`+instanceID, instanceID)
+	cmd = exec.Command(`docker`, `run`, `-d`, `-p`, ":"+port, `-v`, `/data/`+instanceID+`:/data`, `--name=e`+instanceID, instanceID)
 
 	// if app_name == "db" {
 	// 	port = "27017"

@@ -119,7 +119,7 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 	sharkports := make(map[string]string)
 	sharkportstoloop := make(map[string]string)
 
-	var tcp bool = false
+	//var tcp bool = false
 
 	for app_name := range mesh.Projects[project_name].Temp.Apps {
 
@@ -154,14 +154,19 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 		// or you open a new port for each exec, and then have to open them on docker, and then manage which is the http port.
 
 		// todo: this shouldn't be for every exec, building the docker files should happen elsewhere
+		docker_instructions += "FROM yoavgivati/highf.in-docker-base\n" //note: must use "" instead of `` for \n to resolve to newline and not literally \n
+		docker_instructions += "ADD . /code\n"
+		docker_instructions += "ENTRYPOINT /code/jellyfish " + app_name + " " + app.Type
+
+		// copy in binary dependencies
 		for i := 0; i < len(app.Execs); i++ {
 			appPart := app.Execs[i]
 
 			if appPart.Lang == "nodejs" {
 
-				docker_instructions += "FROM debian:7.4\n" //note: must use "" instead of `` for \n to resolve to newline and not literally \n
-				docker_instructions += "ADD . /code\n"
-				docker_instructions += "ENTRYPOINT /code/jellyfish " + app_name
+				// docker_instructions += "FROM yoavgivati/highf.in-docker-base\n" //note: must use "" instead of `` for \n to resolve to newline and not literally \n
+				// docker_instructions += "ADD . /code\n"
+				// docker_instructions += "ENTRYPOINT /code/jellyfish " + app_name
 
 				// the docker image is actually built on shark, octopus doesn't need node.js versions installed
 				nodejs.InstallNode(appPart.Version)
@@ -175,33 +180,6 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 				_ = c.Run()
 				fmt.Println("======")*/
 
-			} else if appPart.Lang == "golang" {
-				docker_instructions += "FROM debian:7.4\n" //note: must use "" instead of `` for \n to resolve to newline and not literally \n
-				docker_instructions += "ADD . /code\n"
-				docker_instructions += "ENTRYPOINT /code/jellyfish " + app_name
-			} else if appPart.Lang == "mongodb" {
-				tcp = true
-				//docker_instructions += "FROM debian:7.4\n"
-				docker_instructions += "FROM ubuntu:12.04\n"
-				docker_instructions += "ADD . /code\n"
-				docker_instructions += "RUN echo 'deb http://archive.ubuntu.com/ubuntu precise main universe' > /etc/apt/sources.list\n"
-				docker_instructions += "RUN apt-get -y update\n"
-				docker_instructions += "RUN apt-key adv --keyserver keyserver.ubuntu.com --recv 7F0CEB10\n"
-				docker_instructions += "RUN echo 'deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' | tee -a /etc/apt/sources.list.d/10gen.list\n"
-				docker_instructions += "RUN apt-get update\n"
-				docker_instructions += "RUN apt-get -y install apt-utils\n"
-				docker_instructions += "RUN apt-get -y install mongodb-10gen\n"
-				// todo: this should be an attached volume
-				docker_instructions += "RUN mkdir -p /data/db\n"
-				//docker_instructions += "RUN \n"
-				docker_instructions += "ENTRYPOINT /code/jellyfish " + app_name
-				//docker_instructions += "ENTRYPOINT /usr/bin/mongod --smallfiles\n"
-			} else {
-				// todo: errors should cleanup steps that have already happened
-				r.AddError("-.json file misconfiguration")
-				r.AddError("app " + app_name + " has Lang " + appPart.Lang + ", expecting one of [nodejs, golang, mongodb]")
-				r.Kill(422)
-				return
 			}
 
 		}
@@ -344,8 +322,9 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 
 			sharkports[jellyport] = sharkport
 
-			if tcp == false {
+			if app.Type == "http" {
 				sharkportstoloop[jellyport] = sharkport
+
 			}
 
 			app.Deploys[instanceID] = sharkport
@@ -380,7 +359,7 @@ func Deploy(r types.Response, mesh *types.Mesh) {
 	fmt.Println("sharkports")
 	fmt.Println(string(sharkportJSON))
 	fmt.Println("sleeping")
-	time.Sleep(30 * time.Second)
+	time.Sleep(10 * time.Second)
 	fmt.Println("waking up")
 	for jellyport := range sharkportstoloop {
 		//sharkport_ip := strings.SplitAfter(sharkports[jellyport], ":")[0]
