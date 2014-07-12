@@ -1,23 +1,6 @@
 {
 	"web": {
-		"exec": [{
-			"lang": "nodejs",
-			"version": "0.10.28",
-			"main": "./salmon.js",
-			"watch": ["./"],
-			"exclude": ["./salmon/node_modules", "./libs/node_modules", "./public/assets/css"],
-			"npm": ["./salmon", "./libs"],
-			"endpoints": [{"path":"/0", "port": "8080"}]
-		}],
-		"static": [{"path": "/", "dir": "./public"}]
-	}
-}
-
-
-
-/*
-{
-	"web": {
+		"type": "http",
 		"exec": [{
 			"lang": "nodejs",
 			"version": "0.10.28",
@@ -32,6 +15,7 @@
 		"instances": ["6000"]
 	},
 	"web2": {
+		"type": "http",
 		"exec": [{
 			"lang": "nodejs",
 			"version": "0.10.28",
@@ -46,17 +30,8 @@
 		"instances": ["6001"]
 	},
 	"db": {
-		"exec": [{
-			"lang": "mongodb",
-			"version": "2.6.3",
-			"main": "/usr/bin/mongod",
-			"watch": [""],
-			"exclude": ["./salmon/node_modules", "./libs/node_modules", "./public/assets/css"],
-			"npm": ["./salmon", "./libs"],
-			"endpoints": [{"path":"/", "port": "28017"}]			
-		}],
+		"type": "mongodb",
+		"version": "2.6.3",
 		"instances": ["6002"]
 	}
 }
-
-*/
