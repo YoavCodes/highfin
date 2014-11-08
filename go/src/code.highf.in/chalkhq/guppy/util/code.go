@@ -218,5 +218,21 @@ func compileLESS(appPart config.Exec) bool {
 }
 
 func updateCacheControl() {
-
+	// todo later
+	/*
+			original js code from salmon
+			var timestamp = new Date().getTime();
+		    loopOverFolders([tail.config._public_path, tail.config._template_path], function(file_name, root_path) {
+		        // modify .html, .js, and .css files.
+		        if (file_name.match(/.html$|.js$|.css$|.less$/)) {
+		            var file_contents = fs.readFileSync(root_path + file_name, {
+		                'encoding': 'utf8'
+		            });
+		            file_contents = file_contents.replace(/_CACHE_CONTROL_=[0-9]+/g, "_CACHE_CONTROL_=" + timestamp);
+		            fs.writeFileSync(root_path + file_name, file_contents, {
+		                'encoding': 'utf8'
+		            })
+		        }
+		    })
+	*/
 }
