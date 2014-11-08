@@ -95,7 +95,7 @@ func CloneSalmon() {
 	// todo(yoav) update all exec.Commands to pipe stdout and std error to os.out/err
 
 	//cmd := exec.Command("git", "clone", "https://github.com/YoavGivati/salmon", "/vagrant/salmon")
-	cmd := exec.Command("git", "clone", "git@github.com:YoavGivati/highfin.git", "/vagrant/salmon")
+	cmd := exec.Command("git", "clone", "git@github.com:YoavGivati/salmon.git", "/vagrant/salmon")
 	Log(strings.Join(cmd.Args, " "))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
