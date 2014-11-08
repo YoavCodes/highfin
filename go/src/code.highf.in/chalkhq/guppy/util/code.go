@@ -20,6 +20,9 @@ var cmds []*exec.Cmd
 func Run() {
 	dashConfig = config.GetDashConfig("./")
 
+	// todo: compilecompress less/css
+	// todo: update cache_control
+
 	c := time.Tick(1 * time.Second)
 	for _ = range c {
 		// watch/run all apps unless specific app is provided in commandline
@@ -38,6 +41,7 @@ func Run() {
 				app := dashConfig.Apps[j]
 				if isChanged(app) == true {
 					go runApp(app)
+
 				}
 			}
 		}
@@ -76,11 +80,12 @@ func isChanged(app config.App) bool {
 
 				time := info.ModTime().UnixNano()
 				// if it's a new or modified path
-
-				if _, i := watched[path]; i == false || watched[path] != time {
-					// new file to watch
-					//Log(path)
-					changed = true
+				if changed == false {
+					if _, i := watched[path]; i == false || watched[path] != time {
+						// new file to watch
+						//Log(path)
+						changed = true
+					}
 				}
 
 				// move it from old path to new path
