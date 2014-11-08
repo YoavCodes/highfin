@@ -83,8 +83,10 @@ func Deploy(account string, project string, branch string, server string) {
 }
 
 func CloneSalmon() {
-	_ = exec.Command("mkdir", "-p", "/vagrant/go/src/code.chalkhq.com/-").Run()
-	_ = exec.Command("rm", "-dr", "/vagrant/go/src/code.chalkhq.com/-/salmon").Run()
+	ApplyKeys("dev@chalkhq.com")
+
+	_ = exec.Command("rm", "-r", "-f", "/vagrant/salmon").Run()
+	//_ = exec.Command("mkdir", "-p", "/vagrant/salmon").Run()
 
 	// todo(yoav) if it exists ask the user if they want to overwrite it
 
@@ -92,7 +94,8 @@ func CloneSalmon() {
 
 	// todo(yoav) update all exec.Commands to pipe stdout and std error to os.out/err
 
-	cmd := exec.Command("git", "clone", "https://github.com/YoavGivati/salmon", "/vagrant/go/src/code.chalkhq.com/-/salmon")
+	//cmd := exec.Command("git", "clone", "https://github.com/YoavGivati/salmon", "/vagrant/salmon")
+	cmd := exec.Command("git", "clone", "git@github.com:YoavGivati/highfin.git", "/vagrant/salmon")
 	Log(strings.Join(cmd.Args, " "))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
