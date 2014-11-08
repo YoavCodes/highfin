@@ -6,6 +6,7 @@ import "os/exec"
 import "net/http"
 import "path/filepath"
 import "io/ioutil"
+import "code.highf.in/chalkhq/shared/log"
 
 const (
 	KEY_PATH string = "/vagrant/keys"
@@ -55,18 +56,18 @@ func GenerateKey(email string) {
 	blank_string := ""
 	out, err := exec.Command("ssh-keygen", "-t", "ecdsa", "-N", blank_string, "-f", KEY_PATH+"/guppy", "-C", email).CombinedOutput()
 	if err != nil {
-		Log("Generating ssh keys failed: " + err.Error())
+		log.Log("Generating ssh keys failed: " + err.Error())
 	}
 
 	if out != nil {
-		Log(string(out))
+		log.Log(string(out))
 	}
 }
 
 func ValidateKey(account string, project string, email string) bool {
 	// output message with guppy.pub so user can copy and paste
 	// todo(yoav) replace with actual shark api for validating keys
-	Log("Verifying dev has access to project..")
+	log.Log("Verifying dev has access to project..")
 
 	public_key, err := ioutil.ReadFile(KEY_PATH + "/guppy.pub")
 
@@ -82,14 +83,14 @@ func ValidateKey(account string, project string, email string) bool {
 	resp, _ := http.Get("http://google.com/")
 
 	if resp == nil {
-		Log("==== Bleep blop bloop")
-		// Log("Our records show that you do not have access to this project")
-		// Log("Please register your dev key with " + account + "'s " + project + " project")
-		// Log("You can do this by signing into http://highf.in as admin")
-		// Log("or contacting the admin of your account.")
-		Log("Here's your public key, you'll need to add it to the project online to gain access.")
-		Log("============\n" + string(public_key) + "\n============")
-		Log("Press enter to check again")
+		log.Log("==== Bleep blop bloop")
+		// log.Log("Our records show that you do not have access to this project")
+		// log.Log("Please register your dev key with " + account + "'s " + project + " project")
+		// log.Log("You can do this by signing into http://highf.in as admin")
+		// log.Log("or contacting the admin of your account.")
+		log.Log("Here's your public key, you'll need to add it to the project online to gain access.")
+		log.Log("============\n" + string(public_key) + "\n============")
+		log.Log("Press enter to check again")
 
 		a := ""
 		fmt.Scanf("%s", &a) // scan is not waiting
@@ -97,7 +98,7 @@ func ValidateKey(account string, project string, email string) bool {
 		return ValidateKey(account, project, email)
 
 	} else {
-		Log("Validation success")
+		log.Log("Validation success")
 	}
 	// note: it will get stuck in an infinite loop of asking you to upload your keys
 	// user will have to ctrl+c and only get here if it's valid

@@ -11,6 +11,7 @@ import "io"
 import "fmt"
 import "os/exec"
 import "encoding/json"
+import "code.highf.in/chalkhq/shared/log"
 
 const (
 	GUPPY_PATH   string = "/guppy"
@@ -40,7 +41,7 @@ func GetConfig() Config {
 	jsonParser := json.NewDecoder(configFile)
 	if err = jsonParser.Decode(&config); err == io.EOF || err == nil {
 	} else {
-		LogE(err)
+		log.LogE(err)
 	}
 
 	if config.Account == "" || config.Project == "" || config.Email == "" {
@@ -55,7 +56,7 @@ func SetConfig(config Config) {
 	_ = os.MkdirAll(GUPPY_PATH, 777)
 	configFile, err := os.Create(GUPPY_CONFIG)
 
-	LogE(err)
+	log.LogE(err)
 	if err != nil {
 		return
 	}
@@ -65,17 +66,17 @@ func SetConfig(config Config) {
 	_ = configFile // this seems like half a thought
 
 	if config.Account == "" {
-		Log("Please enter your account name:")
+		log.Log("Please enter your account name:")
 		fmt.Scanf("%s", &config.Account)
 	}
 
 	if config.Project == "" {
-		Log("Please enter your project name:")
+		log.Log("Please enter your project name:")
 		fmt.Scanf("%s", &config.Project)
 	}
 
 	if config.Email == "" {
-		Log("Please enter your email address:")
+		log.Log("Please enter your email address:")
 		fmt.Scanf("%s", &config.Email)
 	}
 
@@ -89,12 +90,12 @@ func SetConfig(config Config) {
 
 	// json is encoded as a []byte
 	configJson, err := json.MarshalIndent(config, "", "   ")
-	LogE(err)
+	log.LogE(err)
 
 	configFile.Write(configJson)
 
 	if err != nil {
-		Log("couldn't create Guppy config\n" + err.Error())
+		log.Log("couldn't create Guppy config\n" + err.Error())
 	}
 
 }

@@ -5,6 +5,8 @@ import "os/exec"
 import "code.highf.in/chalkhq/guppy/util"
 import "bytes"
 import "strings"
+import "code.highf.in/chalkhq/shared/nodejs"
+import "code.highf.in/chalkhq/shared/log"
 
 /*
 This is the command-line interface to Guppy. Because Shark also uses Guppy, all of the utility functions are in the guppy/util package
@@ -34,7 +36,7 @@ func main() {
 		cmd.Stdout = &whoami
 		_ = cmd.Run()
 		if strings.Index(whoami.String(), "root") == -1 {
-			util.Log("guppy bootstrap must be run as root")
+			log.Log("guppy bootstrap must be run as root")
 			return
 		}
 		// end run as root
@@ -43,7 +45,7 @@ func main() {
 			todo: install latest golang and node
 		*/
 
-		util.Log("bootstrapping...")
+		log.Log("bootstrapping...")
 
 	case "config":
 		// sets new config based on user input
@@ -62,7 +64,7 @@ func main() {
 			message := os.Args[2] // commit message
 			util.Push(message)
 		} else {
-			util.Log("guppy push commit_message")
+			log.Log("guppy push commit_message")
 		}
 
 	case "deploy":
@@ -84,6 +86,8 @@ func main() {
 
 	case "npm-install":
 		util.NpmInstall()
+	case "npm":
+		nodejs.Npm(os.Args[1:])
 	case "test-salmon":
 		// test salmon
 
@@ -97,7 +101,7 @@ func main() {
 	case "set-server":
 		config = util.GetConfig()
 		if len(os.Args) < 3 {
-			util.Log("guppy set-server [http://domain.com | http://ipaddress]")
+			log.Log("guppy set-server [http://domain.com | http://ipaddress]")
 			return
 		}
 		config.Server = os.Args[2]
@@ -109,16 +113,16 @@ func main() {
 		cmd := exec.Command("cp", "-rfp", "/vagrant/go/bin/guppy", "/usr/bin/guppy")
 		err := cmd.Run()
 		if err != nil {
-			util.Log(err.Error())
+			log.Log(err.Error())
 		}
 		cmd = exec.Command("cp", "-rfp", "/vagrant/go/bin/godep", "/usr/bin/godep")
 		err = cmd.Run()
 		if err != nil {
-			util.Log(err.Error())
+			log.Log(err.Error())
 		}
 
 	default:
-		util.Log("Try: guppy [bootstrap, config, get, test, run, push, deploy dev-next, npm-install]")
+		log.Log("Try: guppy [bootstrap, config, get, test, run, push, deploy dev-next, npm-install]")
 	}
 
 }

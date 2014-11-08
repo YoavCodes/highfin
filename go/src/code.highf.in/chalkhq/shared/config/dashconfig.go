@@ -1,6 +1,7 @@
 package config
 
 import (
+	//"code.highf.in/chalkhq/shared/log"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -18,14 +19,22 @@ type Static struct {
 	Dir  string `json:"dir"`
 }
 
+type Less struct {
+	From string `json:"from"`
+	To   string `json:"to"`
+	Min  bool   `json:"min"`
+}
+
 type Exec struct {
-	Lang      string     `json:"lang"`
-	Version   string     `json:"version"`
-	Main      string     `json:"main"`
-	Watch     []string   `json:"watch"`
-	Exclude   []string   `json:"exclude"`
-	Npm       []string   `json:"npm"`
-	Endpoints []Endpoint `json:"endpoints"`
+	Lang          string     `json:"lang"`
+	Version       string     `json:"version"`
+	Main          string     `json:"main"`
+	Watch         []string   `json:"watch"`
+	Exclude       []string   `json:"exclude"`
+	Cachecontrols []string   `json:"cachecontrol"`
+	Less          []Less     `json:"less"`
+	Npm           []string   `json:"npm"`
+	Endpoints     []Endpoint `json:"endpoints"`
 }
 
 type App struct {
@@ -70,14 +79,26 @@ func GetDashConfig(path string) DashConfig {
 	}
 
 	dashConfig.BasePath, _ = filepath.Abs(parent_search)
-
+	// convert paths to absolute
 	for j := range dashConfig.Apps {
 		app := dashConfig.Apps[j]
 		for k := 0; k < len(app.Execs); k++ {
 			appPart := app.Execs[k]
+			// get abs paths
+			// watch folders
 			for i := 0; i < len(appPart.Watch); i++ {
-				appPart.Watch[i], _ = filepath.Abs(parent_search + appPart.Watch[i])
+				appPart.Watch[i], _ = filepath.Abs(parent_search + j + `/` + appPart.Watch[i])
 			}
+			// exclude folders
+			for i := 0; i < len(appPart.Exclude); i++ {
+				appPart.Exclude[i], _ = filepath.Abs(parent_search + j + `/` + appPart.Exclude[i])
+			}
+			// less/css folders
+			for i := 0; i < len(appPart.Less); i++ {
+				appPart.Less[i].From, _ = filepath.Abs(parent_search + j + `/` + appPart.Less[i].From)
+				appPart.Less[i].To, _ = filepath.Abs(parent_search + j + `/` + appPart.Less[i].To)
+			}
+
 		}
 	}
 
