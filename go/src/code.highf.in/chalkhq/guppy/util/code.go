@@ -54,31 +54,34 @@ func isChanged(app config.App) bool {
 	// or even better start using https://github.com/howeyc/fsnotify which will become an official api in go1.4
 	new_watched := make(map[string]int64)
 	changed := false
-	less_changed := false
 	// walk the src folder hashing every file and appending the hash to a string
 	// hash the string
 	// store in memory, repeat and compare
 	for k := 0; k < len(app.Execs); k++ {
 		appPart := app.Execs[k]
 
+		var ignored_path_regex *regexp.Regexp
 		// todo(yoav): import path should be: "/vagrant/go/src/code.highf.in/chalkhq/salmon", then salmon can reuse the same functions without special treatment
 		// however, then github will only be a mirror, and you'll be pushing/pulling from shark.
 		// given that shark is not stable yet, this will have to suffice.
-		//ignored_paths := regexp.MustCompile(`/.git/`)
-		ignored_paths := strings.Join(appPart.Exclude, "*|") + "*"
-		//ignored_paths = strings.Replace(ignored_paths, "/", "\\/", -1)
-		ignored_path_regex := regexp.MustCompile(ignored_paths)
+		if len(appPart.Exclude) > 0 {
+			ignored_paths := strings.Join(appPart.Exclude, "*|") + "*"
+			ignored_path_regex = regexp.MustCompile(ignored_paths)
+		}
 		for i := 0; i < len(appPart.Watch); i++ {
 
 			_ = filepath.Walk(appPart.Watch[i], func(path string, info os.FileInfo, err error) error {
 
 				if err != nil {
 					log.Log("Can't watch " + path + ", path does not exist")
+					log.LogE(err)
 					return nil
 				}
 
-				if ignored_path_regex.MatchString(path) {
-					return nil
+				if len(appPart.Exclude) > 0 {
+					if ignored_path_regex.MatchString(path) {
+						return nil
+					}
 				}
 
 				time := info.ModTime().UnixNano()
@@ -91,12 +94,6 @@ func isChanged(app config.App) bool {
 					}
 				}
 
-				if _, i := watched[path]; i == false || watched[path] != time {
-					if path[len(path)-5:] == ".less" {
-						less_changed = true
-					}
-				}
-
 				// move it from old path to new path
 				delete(watched, path)
 				new_watched[path] = time
@@ -104,11 +101,6 @@ func isChanged(app config.App) bool {
 				return nil
 
 			})
-
-			if less_changed == true {
-				changed = compileLESS(appPart)
-				// we want execution flow to wait for less to compile
-			}
 		}
 	}
 
@@ -125,10 +117,14 @@ func isChanged(app config.App) bool {
 // todo: should run all the commands in exec. refactor command.E() function anyway to support passing in the command object
 func runApp(app config.App) {
 	for i := 0; i < len(cmds); i++ {
-		cmds[i].Process.Kill()
+		// todo: should check to see if process is still running first
+		if cmds[i] != nil {
+			cmds[i].Process.Kill()
+		}
 	}
-
-	cmds = make([]*exec.Cmd, len(app.Execs))
+	// todo: each exec can have a grunt process, multiplying by two is a bit indeterministic
+	// find a better way to get the real number of execs including grunt processes
+	cmds = make([]*exec.Cmd, len(app.Execs)*2)
 
 	for i := 0; i < len(app.Execs); i++ {
 		appPart := app.Execs[i]
@@ -145,14 +141,28 @@ func runApp(app config.App) {
 				log.Log("Running..")
 			}
 			mainSplit := strings.Split(appPart.Main, "/")
-			cmds[i] = command.E(mainSplit[len(mainSplit)-1])
-			cmds[i].Run()
+			golang := command.E(mainSplit[len(mainSplit)-1])
+			cmds[i] = golang
+			golang.Run()
 
 		case "nodejs":
-			log.Log("Running..")
+			if appPart.GruntDirectory != "" {
+				log.Log("Running grunt..")
+				grunt := command.E(nodejs.BinPath(appPart.Version) + ` ` + nodejs.GruntPath(appPart.Version) + ` dev`)
+				gruntpath, _ := filepath.Abs(dashConfig.BasePath + `/` + appPart.GruntDirectory)
+				grunt.Dir = gruntpath
+				cmds[i] = grunt
+				go grunt.Run()
+				i++
+			}
+			log.Log("Running nodejs..")
 			nodejs.InstallNode(appPart.Version)
-			cmds[i] = command.E(nodejs.BinPath(appPart.Version) + ` ` + appPart.Main)
-			cmds[i].Run()
+			mainpath, _ := filepath.Abs(dashConfig.BasePath + `/` + appPart.Main)
+			node := command.E(nodejs.BinPath(appPart.Version) + ` ` + mainpath)
+			node.Dir, _ = filepath.Split(mainpath)
+			cmds[i] = node
+			node.Run()
+
 		}
 	}
 }
@@ -179,42 +189,6 @@ func NpmInstall() {
 		log.Log(`App "` + os.Args[2] + `" is not declared in -.json`)
 		return
 	}
-}
-
-func compileLESS(appPart config.Exec) bool {
-	if len(appPart.Less) == 0 {
-		return false
-	}
-
-	log.Log("Compiling less...")
-
-	for i := 0; i < len(appPart.Less); i++ {
-		less := appPart.Less[i]
-		// loop over less folder and output into css folder
-		_ = filepath.Walk(less.From, func(path string, info os.FileInfo, err error) error {
-
-			if err != nil {
-				log.Log("Can't find less, " + path + " does not exist")
-				return nil
-			}
-
-			if info.IsDir() == true || path[len(path)-5:] != ".less" {
-				return nil
-			}
-
-			//source := path // asbolute path of less file
-			destination_folder := strings.Replace(path, less.From, ``, 1) // less file path minus the root less folder
-			// note: less.To is expected to be an abs path, resolved in dashconfig.go GetDashConfig()
-			destination := less.To + strings.Replace(destination_folder, `.less`, `.css`, 1) // replace the extension
-			cmd := command.E(nodejs.BinPath(appPart.Version) + ` ` + nodejs.LessPath(appPart.Version) + ` ` + path + ` ` + destination)
-			cmd.Run()
-
-			return nil
-		})
-
-		//cmd := command.E(`lessc `+``+``)
-	}
-	return true
 }
 
 func updateCacheControl() {

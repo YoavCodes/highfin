@@ -88,6 +88,8 @@ func main() {
 		util.NpmInstall()
 	case "npm":
 		nodejs.Npm(os.Args[1:])
+	case "grunt":
+		nodejs.Grunt(os.Args[1:])
 	case "test-salmon":
 		// test salmon
 

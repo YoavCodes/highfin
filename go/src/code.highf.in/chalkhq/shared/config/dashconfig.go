@@ -1,9 +1,8 @@
 package config
 
 import (
-	//"code.highf.in/chalkhq/shared/log"
+	"code.highf.in/chalkhq/shared/log"
 	"encoding/json"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -26,15 +25,15 @@ type Less struct {
 }
 
 type Exec struct {
-	Lang          string     `json:"lang"`
-	Version       string     `json:"version"`
-	Main          string     `json:"main"`
-	Watch         []string   `json:"watch"`
-	Exclude       []string   `json:"exclude"`
-	Cachecontrols []string   `json:"cachecontrol"`
-	Less          []Less     `json:"less"`
-	Npm           []string   `json:"npm"`
-	Endpoints     []Endpoint `json:"endpoints"`
+	Lang           string     `json:"lang"`
+	Version        string     `json:"version"`
+	Main           string     `json:"main"`
+	Watch          []string   `json:"watch"`
+	Exclude        []string   `json:"exclude"`
+	Cachecontrols  []string   `json:"cachecontrol"`
+	GruntDirectory string     `json:"gruntdirectory"`
+	Npm            []string   `json:"npm"`
+	Endpoints      []Endpoint `json:"endpoints"`
 }
 
 type App struct {
@@ -63,7 +62,7 @@ func GetDashConfig(path string) DashConfig {
 		var abs string
 		abs, err = filepath.Abs(path + parent_search + "-.json")
 		if abs == "/-.json" {
-			fmt.Println("Could not find -.json file.")
+			log.Log("Could not find -.json file.")
 			return dashConfig
 		}
 		dashConfigFile, err = os.Open(parent_search + "-.json")
@@ -74,8 +73,8 @@ func GetDashConfig(path string) DashConfig {
 	jsonParser := json.NewDecoder(dashConfigFile)
 	if err = jsonParser.Decode(&dashConfig.Apps); err == io.EOF || err == nil {
 	} else {
-		fmt.Println("Could not parse -.json files")
-		fmt.Println(err.Error())
+		log.Log("Could not parse -.json files")
+		log.Log(err.Error())
 	}
 
 	dashConfig.BasePath, _ = filepath.Abs(parent_search)
@@ -85,20 +84,15 @@ func GetDashConfig(path string) DashConfig {
 		for k := 0; k < len(app.Execs); k++ {
 			appPart := app.Execs[k]
 			// get abs paths
+			appPart.Main, _ = filepath.Abs(parent_search + appPart.Main)
 			// watch folders
 			for i := 0; i < len(appPart.Watch); i++ {
-				appPart.Watch[i], _ = filepath.Abs(parent_search + j + `/` + appPart.Watch[i])
+				appPart.Watch[i], _ = filepath.Abs(parent_search + appPart.Watch[i])
 			}
 			// exclude folders
 			for i := 0; i < len(appPart.Exclude); i++ {
-				appPart.Exclude[i], _ = filepath.Abs(parent_search + j + `/` + appPart.Exclude[i])
+				appPart.Exclude[i], _ = filepath.Abs(parent_search + appPart.Exclude[i])
 			}
-			// less/css folders
-			for i := 0; i < len(appPart.Less); i++ {
-				appPart.Less[i].From, _ = filepath.Abs(parent_search + j + `/` + appPart.Less[i].From)
-				appPart.Less[i].To, _ = filepath.Abs(parent_search + j + `/` + appPart.Less[i].To)
-			}
-
 		}
 	}
 

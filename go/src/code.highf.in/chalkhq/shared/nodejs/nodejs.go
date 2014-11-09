@@ -28,6 +28,10 @@ func LessPath(version string) string {
 	return `/usr/local/n/` + version + `/bin/lessc`
 }
 
+func GruntPath(version string) string {
+	return `/usr/local/n/` + version + `/bin/grunt`
+}
+
 func InstallNode(version string) {
 
 	version_folder := BinFolder(version)
@@ -57,7 +61,7 @@ func InstallNode(version string) {
 		}
 
 		// install lessc (command line less compiler) for the current version
-		command.E(NpmPath(version) + " install less -g")
+		command.E(NpmPath(version) + " install -g grunt-cli")
 
 	} else {
 		log.Log("using nodejs v" + version + "")
@@ -74,4 +78,14 @@ func Npm(args []string) {
 	cmd := command.E(command_string)
 	cmd.Run()
 
+}
+
+func Grunt(args []string) {
+	// todo: setup "current" version with /n/current symlinked to the current version
+	version_folder := GruntPath("0.10.28")
+	//args = args[1:]
+	args[0] = BinPath("0.10.28") + ` ` + version_folder
+	command_string := strings.Join(args, " ")
+	cmd := command.E(command_string)
+	cmd.Run()
 }

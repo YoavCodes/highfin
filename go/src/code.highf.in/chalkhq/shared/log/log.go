@@ -18,3 +18,7 @@ func LogE(err error) {
 		Log("error: " + err.Error())
 	}
 }
+
+func LogA(a ...interface{}) {
+	fmt.Println(a...)
+}
