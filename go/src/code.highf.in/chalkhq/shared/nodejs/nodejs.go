@@ -61,7 +61,10 @@ func InstallNode(version string) {
 		}
 
 		// install lessc (command line less compiler) for the current version
-		command.E(NpmPath(version) + " install -g grunt-cli")
+		command.E(NpmPath(version) + " install less -g")
+
+		// install grunt (command line grunt) for the current version
+		command.E(NpmPath(version) + " install grunt-cli -g")
 
 	} else {
 		log.Log("using nodejs v" + version + "")

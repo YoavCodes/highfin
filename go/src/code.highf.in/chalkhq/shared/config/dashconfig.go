@@ -31,6 +31,7 @@ type Exec struct {
 	Watch          []string   `json:"watch"`
 	Exclude        []string   `json:"exclude"`
 	Cachecontrols  []string   `json:"cachecontrol"`
+	Less           []Less     `json:"less"`
 	GruntDirectory string     `json:"gruntdirectory"`
 	Npm            []string   `json:"npm"`
 	Endpoints      []Endpoint `json:"endpoints"`
@@ -92,6 +93,11 @@ func GetDashConfig(path string) DashConfig {
 			// exclude folders
 			for i := 0; i < len(appPart.Exclude); i++ {
 				appPart.Exclude[i], _ = filepath.Abs(parent_search + appPart.Exclude[i])
+			}
+			// less/css folders
+			for i := 0; i < len(appPart.Less); i++ {
+				appPart.Less[i].From, _ = filepath.Abs(parent_search + `/` + appPart.Less[i].From)
+				appPart.Less[i].To, _ = filepath.Abs(parent_search + `/` + appPart.Less[i].To)
 			}
 		}
 	}

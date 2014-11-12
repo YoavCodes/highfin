@@ -54,19 +54,31 @@ func isChanged(app config.App) bool {
 	// or even better start using https://github.com/howeyc/fsnotify which will become an official api in go1.4
 	new_watched := make(map[string]int64)
 	changed := false
+	less_changed := false
 	// walk the src folder hashing every file and appending the hash to a string
 	// hash the string
 	// store in memory, repeat and compare
+
 	for k := 0; k < len(app.Execs); k++ {
 		appPart := app.Execs[k]
 
 		var ignored_path_regex *regexp.Regexp
+		var less_path_regex *regexp.Regexp
 		// todo(yoav): import path should be: "/vagrant/go/src/code.highf.in/chalkhq/salmon", then salmon can reuse the same functions without special treatment
 		// however, then github will only be a mirror, and you'll be pushing/pulling from shark.
 		// given that shark is not stable yet, this will have to suffice.
 		if len(appPart.Exclude) > 0 {
 			ignored_paths := strings.Join(appPart.Exclude, "*|") + "*"
 			ignored_path_regex = regexp.MustCompile(ignored_paths)
+		}
+		less_paths := ""
+		for i := 0; i < len(appPart.Less); i++ {
+			less_paths += appPart.Less[i].From + "*|"
+		}
+
+		if len(less_paths) > 0 {
+			less_paths = less_paths[:len(less_paths)-2] // get rid of final |
+			less_path_regex = regexp.MustCompile(less_paths)
 		}
 		for i := 0; i < len(appPart.Watch); i++ {
 
@@ -80,6 +92,9 @@ func isChanged(app config.App) bool {
 
 				if len(appPart.Exclude) > 0 {
 					if ignored_path_regex.MatchString(path) {
+						if info.IsDir() {
+							return filepath.SkipDir
+						}
 						return nil
 					}
 				}
@@ -89,8 +104,18 @@ func isChanged(app config.App) bool {
 				if changed == false {
 					if _, i := watched[path]; i == false || watched[path] != time {
 						// new file to watch
-						changed = true
+						if info.IsDir() == false {
+							changed = true
+							log.Log(path)
+						}
+					}
+				}
 
+				if _, i := watched[path]; i == false || watched[path] != time {
+					if len(less_paths) > 0 {
+						if less_path_regex.MatchString(path) {
+							less_changed = true
+						}
 					}
 				}
 
@@ -101,6 +126,11 @@ func isChanged(app config.App) bool {
 				return nil
 
 			})
+		}
+
+		if less_changed == true {
+			changed = compileLESS(appPart)
+			// we want execution flow to wait for less to compile
 		}
 	}
 
@@ -165,6 +195,64 @@ func runApp(app config.App) {
 
 		}
 	}
+}
+
+func compileLESS(appPart config.Exec) bool {
+	if len(appPart.Less) == 0 {
+		return false
+	}
+
+	log.Log("Compiling less...")
+
+	for i := 0; i < len(appPart.Less); i++ {
+		less := appPart.Less[i]
+		// loop over less folder and output into css folder
+		_ = filepath.Walk(less.From, func(path string, info os.FileInfo, err error) error {
+
+			if err != nil {
+				log.Log("Can't find less, " + path + " does not exist")
+				return nil
+			}
+
+			//source := path // asbolute path of less file
+			destination_file := ""
+			if path != less.From {
+				destination_file = path[len(less.From):] //strings.Replace(path, less.From, ``, 1) // less file path minus the root less folder
+			}
+			log.Log(path + " :: " + destination_file + " :: " + less.From)
+			// note: less.To is expected to be an abs path, resolved in dashconfig.go GetDashConfig()
+			//log.Log(destination_file)
+			//log.Log(path)
+			destination := less.To + "/"
+
+			var cmd *exec.Cmd
+
+			if info.IsDir() == false && path[len(path)-5:] != ".less" {
+				// copy non-less files and folders
+				destination += destination_file
+				log.Log("cp " + path + " " + destination)
+				cmd = command.E("cp " + path + " " + destination)
+			} else if info.IsDir() == true {
+				destination += destination_file
+				log.Log("mkdir -p " + destination)
+				cmd = command.E("mkdir -p " + destination)
+			} else {
+				// compile less
+				destination = less.To + "/" + strings.Replace(destination_file, `.less`, `.css`, 1) // replace less extensions extension
+				options := ""
+				if less.Min == true {
+					options = "-x"
+				}
+				cmd = command.E(nodejs.BinPath(appPart.Version) + ` ` + nodejs.LessPath(appPart.Version) + ` ` + options + ` ` + path + ` ` + destination)
+			}
+			//log.Log(nodejs.BinPath(appPart.Version) + ` ` + nodejs.LessPath(appPart.Version) + ` ` + path + ` ` + destination)
+			cmd.Run()
+
+			return nil
+		})
+
+	}
+	return false
 }
 
 func NpmInstall() {
