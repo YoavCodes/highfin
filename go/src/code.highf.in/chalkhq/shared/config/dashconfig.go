@@ -24,6 +24,11 @@ type Less struct {
 	Min  bool   `json:"min"`
 }
 
+type Jasmine struct {
+	Frontend string `json:"frontend"`
+	Backend  string `json:"backend"`
+}
+
 type Exec struct {
 	Lang           string     `json:"lang"`
 	Version        string     `json:"version"`
@@ -32,6 +37,7 @@ type Exec struct {
 	Exclude        []string   `json:"exclude"`
 	Cachecontrols  []string   `json:"cachecontrol"`
 	Less           []Less     `json:"less"`
+	Jasmine        Jasmine    `json:"jasmine"`
 	GruntDirectory string     `json:"gruntdirectory"`
 	Npm            []string   `json:"npm"`
 	Endpoints      []Endpoint `json:"endpoints"`
@@ -86,6 +92,14 @@ func GetDashConfig(path string) DashConfig {
 			appPart := app.Execs[k]
 			// get abs paths
 			appPart.Main, _ = filepath.Abs(parent_search + appPart.Main)
+
+			// if appPart.Jasmine.Backend != "" {
+			// 	appPart.Jasmine.Backend, _ = filepath.Abs(parent_search + appPart.Jasmine.Backend)
+			// }
+			// if appPart.Jasmine.Frontend != "" {
+			// 	log.Log("good")
+			// 	appPart.Jasmine.Frontend = dashConfig.BasePath + appPart.Jasmine.Frontend
+			// }
 			// watch folders
 			for i := 0; i < len(appPart.Watch); i++ {
 				appPart.Watch[i], _ = filepath.Abs(parent_search + appPart.Watch[i])

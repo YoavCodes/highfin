@@ -32,6 +32,14 @@ func GruntPath(version string) string {
 	return `/usr/local/n/` + version + `/bin/grunt`
 }
 
+func PhantomjsPath(version string) string {
+	return `/usr/local/n/` + version + `/bin/phantomjs`
+}
+
+func JasmineNodePath(version string) string {
+	return `/usr/local/n/` + version + `/bin/jasmine-node`
+}
+
 func InstallNode(version string) {
 
 	version_folder := BinFolder(version)
@@ -62,6 +70,12 @@ func InstallNode(version string) {
 
 		// install lessc (command line less compiler) for the current version
 		command.E(NpmPath(version) + " install less -g")
+
+		// install jasmine-node for current version
+		command.E(NpmPath(version) + " install jasmine-node -g") // server tests
+		//command.E(NpmPath(version) + " install -g jasmine-phantom-node") // client tests
+		command.E(NpmPath(version) + " install phantom-jasmine -g") // client tests todo: consider jasmine standalone or re-use jasmine-node
+		command.E(NpmPath(version) + " install phantomjs -g")       // phantomjs
 
 		// install grunt (command line grunt) for the current version
 		command.E(NpmPath(version) + " install grunt-cli -g")

@@ -106,7 +106,7 @@ func isChanged(app config.App) bool {
 						// new file to watch
 						if info.IsDir() == false {
 							changed = true
-							log.Log(path)
+							//log.Log(path)
 						}
 					}
 				}
@@ -185,6 +185,7 @@ func runApp(app config.App) {
 				go grunt.Run()
 				i++
 			}
+			runJasmine(appPart)
 			log.Log("Running nodejs..")
 			nodejs.InstallNode(appPart.Version)
 			mainpath, _ := filepath.Abs(dashConfig.BasePath + `/` + appPart.Main)
@@ -219,7 +220,7 @@ func compileLESS(appPart config.Exec) bool {
 			if path != less.From {
 				destination_file = path[len(less.From):] //strings.Replace(path, less.From, ``, 1) // less file path minus the root less folder
 			}
-			log.Log(path + " :: " + destination_file + " :: " + less.From)
+			//log.Log(path + " :: " + destination_file + " :: " + less.From)
 			// note: less.To is expected to be an abs path, resolved in dashconfig.go GetDashConfig()
 			//log.Log(destination_file)
 			//log.Log(path)
@@ -230,11 +231,11 @@ func compileLESS(appPart config.Exec) bool {
 			if info.IsDir() == false && path[len(path)-5:] != ".less" {
 				// copy non-less files and folders
 				destination += destination_file
-				log.Log("cp " + path + " " + destination)
+				//log.Log("cp " + path + " " + destination)
 				cmd = command.E("cp " + path + " " + destination)
 			} else if info.IsDir() == true {
 				destination += destination_file
-				log.Log("mkdir -p " + destination)
+				//log.Log("mkdir -p " + destination)
 				cmd = command.E("mkdir -p " + destination)
 			} else {
 				// compile less
@@ -253,6 +254,17 @@ func compileLESS(appPart config.Exec) bool {
 
 	}
 	return false
+}
+
+func runJasmine(appPart config.Exec) {
+	//log.Log("running Jasmine")
+	if appPart.Jasmine.Backend != "" {
+		command.E(nodejs.BinPath(appPart.Version) + ` ` + nodejs.JasmineNodePath(appPart.Version) + ` --forceexit ` + dashConfig.BasePath + `/` + appPart.Jasmine.Backend).Run()
+	}
+
+	if appPart.Jasmine.Frontend != "" {
+		command.E(nodejs.BinPath(appPart.Version) + ` ` + nodejs.PhantomjsPath(appPart.Version) + ` ` + dashConfig.BasePath + `/` + appPart.Jasmine.Frontend + `/run-jasmine.js` + ` ` + dashConfig.BasePath + `/` + appPart.Jasmine.Frontend + `/SpecRunner.html`).Run()
+	}
 }
 
 func NpmInstall() {
