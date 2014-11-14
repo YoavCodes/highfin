@@ -149,6 +149,8 @@ func runApp(app config.App) {
 	for i := 0; i < len(cmds); i++ {
 		// todo: should check to see if process is still running first
 		if cmds[i] != nil {
+			_, process_name := filepath.Split(cmds[i].Path)
+			log.Log("killing " + process_name)
 			cmds[i].Process.Kill()
 		}
 	}
@@ -257,13 +259,14 @@ func compileLESS(appPart config.Exec) bool {
 }
 
 func runJasmine(appPart config.Exec) {
-	//log.Log("running Jasmine")
 	if appPart.Jasmine.Backend != "" {
+		log.Log("Running Jasmine back-end tests")
 		command.E(nodejs.BinPath(appPart.Version) + ` ` + nodejs.JasmineNodePath(appPart.Version) + ` --forceexit ` + dashConfig.BasePath + `/` + appPart.Jasmine.Backend).Run()
 	}
 
 	if appPart.Jasmine.Frontend != "" {
-		command.E(nodejs.BinPath(appPart.Version) + ` ` + nodejs.PhantomjsPath(appPart.Version) + ` ` + dashConfig.BasePath + `/` + appPart.Jasmine.Frontend + `/run-jasmine.js` + ` ` + dashConfig.BasePath + `/` + appPart.Jasmine.Frontend + `/SpecRunner.html`).Run()
+		log.Log("Running Jasmine front-end tests")
+		command.E(nodejs.BinPath(appPart.Version) + ` ` + nodejs.PhantomjsPath(appPart.Version) + ` --web-security=false ` + dashConfig.BasePath + `/` + appPart.Jasmine.Frontend + `/../.jasmine/run-jasmine.js` + ` ` + dashConfig.BasePath + `/` + appPart.Jasmine.Frontend + `/../.jasmine/SpecRunner.html`).Run()
 	}
 }
 
