@@ -1,7 +1,7 @@
 highfin
 =======
 
-The purpose of this project is to build a highly scalable flexible deployment infrastructure. currently supports node.js, golang, and mongodb. I'm leaving this as a functional prototype so there are lots of optimizations to be made with regard to streaming data, proper error handling, unit tests, etc.
+The purpose of this project is to build a highly scalable flexible deployment infrastructure. currently supports node.js, golang, and mongodb. Currently a functional prototype so there are lots of optimizations to be made with regard to streaming data, proper error handling, unit tests, etc.
 
 I'm adding the code in this repo to the public domain as is without warranty. 
 
