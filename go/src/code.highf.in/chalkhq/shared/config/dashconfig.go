@@ -62,7 +62,7 @@ type DashConfig struct {
 
 func GetDashConfig(path string) DashConfig {
 	var dashConfig DashConfig
-	parent_search := ""
+	parent_search := "./"
 	dashConfigFile, err := os.Open(path + "-.json")
 	for err != nil {
 		parent_search += "../"
@@ -110,8 +110,8 @@ func GetDashConfig(path string) DashConfig {
 			}
 			// less/css folders
 			for i := 0; i < len(appPart.Less); i++ {
-				appPart.Less[i].From, _ = filepath.Abs(parent_search + `/` + appPart.Less[i].From)
-				appPart.Less[i].To, _ = filepath.Abs(parent_search + `/` + appPart.Less[i].To)
+				appPart.Less[i].From, _ = filepath.Abs(parent_search + appPart.Less[i].From)
+				appPart.Less[i].To, _ = filepath.Abs(parent_search + appPart.Less[i].To)
 			}
 		}
 	}
