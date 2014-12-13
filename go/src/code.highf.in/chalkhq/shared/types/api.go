@@ -17,8 +17,9 @@ type Response struct {
 	W        http.ResponseWriter
 	Response struct {
 		Meta struct {
-			Status int      `json:"status"`
-			Errors []string `json:"errors"`
+			Status   int      `json:"status"`
+			Errors   []string `json:"errors"`
+			Messages []string `json:"messages"`
 		} `json:"meta"`
 		Data map[string]interface{} `json:"data"`
 	}
@@ -41,4 +42,8 @@ func (r *Response) Kill(status int) {
 
 func (r *Response) AddError(error_string string) {
 	r.Response.Meta.Errors = append(r.Response.Meta.Errors, error_string)
+}
+
+func (r *Response) AddMessage(msg_string string) {
+	r.Response.Meta.Messages = append(r.Response.Meta.Messages, msg_string)
 }

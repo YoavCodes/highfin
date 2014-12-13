@@ -1,11 +1,11 @@
-GO_VERSION=1.2.1
+GO_VERSION=1.4
 NODE_VERSION=0.10.24
 NPM_VERSION=1.3.22
 # get this from prompt in vagrant up
 EMAIL="git@highf.in"
 
 note() {
-	echo -e "\033[0;97;41m ===SHARK=== \033[0m\033[0;97;46m $1 \033[0m" # ===white on red=== white on cyan
+	echo -e "\033[0;97;41m ===vagrant=== \033[0m\033[0;97;46m $1 \033[0m" # ===white on red=== white on cyan
 }
 
 ## todo all of this, including installing golang should be migrated to shark bootstrap
@@ -25,12 +25,13 @@ sudo apt-get -y install lxc-docker curl git
 ssh-keygen -A
 
 if [ ! -e /vagrant/lib/go${GO_VERSION}.linux-amd64.tar.gz  ]; then
-	note "downloading go 1.2.1 binaries from Google"
-	wget -P /vagrant/lib/ https://go.googlecode.com/files/go${GO_VERSION}.linux-amd64.tar.gz 
-	# wget -P /vagrant/lib/ https://go.googlecode.com/files/go1.2.1.linux-amd64.tar.gz 
+	note "downloading go 1.4 binaries from Google"
+	wget -P /vagrant/lib/ https://storage.googleapis.com/golang/go${GO_VERSION}.linux-amd64.tar.gz	
+	# wget -P /vagrant/lib/ https://storage.googleapis.com/golang/go1.4.linux-amd64.tar.gz
 fi
 
 tar -C /usr/local -xzf /vagrant/lib/go${GO_VERSION}.linux-amd64.tar.gz 
+
 
 #note: guppy should install and run whichever version is stipulated in -.json file
 #		it should install the latest version as main

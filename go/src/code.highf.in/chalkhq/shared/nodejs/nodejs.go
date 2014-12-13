@@ -40,6 +40,10 @@ func JasmineNodePath(version string) string {
 	return `/usr/local/n/` + version + `/bin/jasmine-node`
 }
 
+func ForeverPath(version string) string {
+	return `/usr/local/n/` + version + `/bin/forever`
+}
+
 func InstallNode(version string) {
 
 	version_folder := BinFolder(version)
@@ -68,17 +72,22 @@ func InstallNode(version string) {
 			return
 		}
 
+		// todo: these should all be done in guppy or otherwise separately as not every project requires them
+		// and it's slow
 		// install lessc (command line less compiler) for the current version
-		command.E(NpmPath(version) + " install less -g")
+		command.E(NpmPath(version) + " install less -g").Run()
+
+		// forever is used in fishtank
+		//command.E(NpmPath(version) + " install forever -g").Run()
 
 		// install jasmine-node for current version
-		command.E(NpmPath(version) + " install jasmine-node -g") // server tests
+		command.E(NpmPath(version) + " install jasmine-node -g").Run() // server tests
 		//command.E(NpmPath(version) + " install -g jasmine-phantom-node") // client tests
-		command.E(NpmPath(version) + " install phantom-jasmine -g") // client tests todo: consider jasmine standalone or re-use jasmine-node
-		command.E(NpmPath(version) + " install phantomjs -g")       // phantomjs
+		command.E(NpmPath(version) + " install phantom-jasmine -g").Run() // client tests todo: consider jasmine standalone or re-use jasmine-node
+		command.E(NpmPath(version) + " install phantomjs -g").Run()       // phantomjs
 
 		// install grunt (command line grunt) for the current version
-		command.E(NpmPath(version) + " install grunt-cli -g")
+		command.E(NpmPath(version) + " install grunt-cli -g").Run()
 
 	} else {
 		log.Log("using nodejs v" + version + "")

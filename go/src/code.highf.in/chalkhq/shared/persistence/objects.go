@@ -11,11 +11,13 @@ import (
 // persist data to disk every 2 seconds.
 // todo: optimize into goroutines and move to shared lib, etc.
 // todo: add function to mkdir of parents if not exists
+
+// todo: use a channel of objects, write the new object when it's received on the channel
 func PersistData(object interface{}, filename string, changed *bool) {
 	for {
-		tmpFilename := filename + ".tmp"
 		time.Sleep(2 * time.Second)
 		if *changed == true {
+			tmpFilename := filename + ".tmp"
 			*changed = false
 			file, err := os.Create(tmpFilename)
 			if err != nil {
@@ -41,12 +43,35 @@ func PersistData(object interface{}, filename string, changed *bool) {
 	}
 }
 
+func SaveData(object interface{}, filename string) {
+	tmpFilename := filename + ".tmp"
+	file, err := os.Create(tmpFilename)
+	if err != nil {
+		fmt.Println("Error creating file " + tmpFilename)
+		return
+	}
+	defer file.Close()
+
+	objectJson, err := json.MarshalIndent(object, "", " ")
+	if err != nil {
+		fmt.Println("Error Marshalling object")
+		return
+	}
+
+	file.Write(objectJson)
+
+	// remove the old file
+	os.Remove(filename)
+
+	// rename the new file
+	os.Rename(tmpFilename, filename)
+}
+
 // get persisted data
 func GetData(object interface{}, filename string) {
 	file, err := os.Open(filename)
 	if err != nil {
-		fmt.Println("Error opening file " + filename)
-		fmt.Println(err.Error())
+		_, _ = os.Create(filename)
 		return
 	}
 

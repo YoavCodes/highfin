@@ -57,6 +57,16 @@
 			"watch": ["./go/src/code.highf.in/chalkhq/guppy", "./go/src/code.highf.in/chalkhq/shared"],
 			"instances": ["1:80"]
 		}]
+	},
+
+	"fishtank": {
+		"exec": [{
+			"lang": "golang",
+			"version": "1.4",
+			"main": "code.highf.in/chalkhq/fishtank",
+			"watch": ["./go/src/code.highf.in/chalkhq/fishtank", "./go/src/code.highf.in/chalkhq/shared"],
+			"instances": ["1:80"]
+		}]
 	}
 
 

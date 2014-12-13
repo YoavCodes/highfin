@@ -39,4 +39,8 @@ Vagrant.configure("2") do |config|
   config.vm.define "guppy" do |conf|
   	conf.vm.network :private_network, ip: "10.10.10.100"
   end
+
+  config.vm.define "fishtank" do |conf|
+    conf.vm.network :private_network, ip: "10.10.10.200"
+  end
 end

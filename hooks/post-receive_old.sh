@@ -21,7 +21,7 @@ old_rev_path="$project_folder/$oldrev"
 nginx_conf_file="/srv/nginx/$project_name.conf"
 log_file="/srv/logs/production/$project_name.log"
 
-app_config_file="$new_rev_path/application/config.js"
+app_config_file="$new_rev_path/config/config.js"
 
 ###############################################
 ## switch to new code and respawn everything ##
