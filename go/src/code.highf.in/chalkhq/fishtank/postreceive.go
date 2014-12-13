@@ -15,11 +15,12 @@ import (
 )
 
 func RunNewRev(project string, newrev string, dashConfig dConfig.DashConfig) {
+
 	newrevision := data.Projects[project].Revisions[newrev]
 
 	for j := range dashConfig.Apps {
 		app := dashConfig.Apps[j]
-		newrevision.cmds = make([]*exec.Cmd, len(app.Execs)*2)
+		newrevision.cmds = make([]*exec.Cmd, len(app.Execs))
 
 		for i := 0; i < len(app.Execs); i++ {
 			appPart := app.Execs[i]
@@ -39,6 +40,8 @@ func RunNewRev(project string, newrev string, dashConfig dConfig.DashConfig) {
 			}
 		}
 	}
+	data.Projects[project].Revisions[newrev] = newrevision
+
 }
 
 func KillProject(project string) {
@@ -58,8 +61,6 @@ func KillOldRev(project string, oldrev string) {
 			cmds[i].Process.Kill()
 		}
 	}
-
-	_ = command.E("rm -R /srv/www/" + project + "/" + oldrev).Run()
 
 	delete(data.Projects[project].Revisions, oldrev)
 
@@ -151,6 +152,9 @@ func PostReceive(project string, old_rev string, new_rev string, branch string) 
 	// run app with forever
 	// todo: run each node app/binary like guppy, if it fails, respawn. don't use forever
 	// also keep track of the running projects somehow and re-run them when fishtank loads.
+	proj := data.Projects[project]
+	proj.Lock()
+
 	RunNewRev(project, new_rev, dashConfig)
 
 	time.Sleep(3 * time.Second) // give the app a chance to boot up
@@ -162,6 +166,7 @@ func PostReceive(project string, old_rev string, new_rev string, branch string) 
 	// kill the old app
 	KillOldRev(project, old_rev)
 
+	proj.Unlock()
 	// cleanup old rev
 	_ = command.E("rm -R " + old_rev_path)
 

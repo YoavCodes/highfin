@@ -11,6 +11,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
+	"time"
 )
 
 const (
@@ -26,6 +28,7 @@ type Project struct {
 	Current_revision string `json:"current_revision"`
 	Revisions        map[string]Revision
 	Branch           string `json:"branch"`
+	sync.Mutex
 }
 
 type Revision struct {
@@ -90,6 +93,47 @@ func main() {
 	}
 }
 
+func HealthCheck() {
+	// projects[project].Lock()
+	// check if processes are still alive every second
+	tick := time.Tick(1 * time.Second)
+	for _ = range tick {
+		for j := range data.Projects {
+			var project = data.Projects[j]
+			project.Lock()
+
+			current_rev := data.Projects[j].Revisions[data.Projects[j].Current_revision]
+			for i := 0; i < len(current_rev.cmds); i++ {
+
+				cmd := current_rev.cmds[i]
+
+				if cmd.ProcessState != nil && cmd.ProcessState.Exited() == true {
+					// re-run
+					fmt.Println("exec exited " + cmd.ProcessState.String() + " attempting to restart")
+					current_rev.cmds[i] = RestartExec(cmd)
+				}
+
+			}
+
+			project.Unlock()
+		}
+
+	}
+
+}
+
+func RestartExec(cmd *exec.Cmd) *exec.Cmd {
+	newCmd := exec.Command(cmd.Path)
+	newCmd.Args = cmd.Args
+	newCmd.Dir = cmd.Dir
+	newCmd.Stdout = cmd.Stdout
+	newCmd.Stderr = cmd.Stderr
+
+	go newCmd.Run()
+	return newCmd
+
+}
+
 func StartServer() {
 	// start the fishtank server
 	// todo: detach
@@ -101,6 +145,9 @@ func StartServer() {
 		dashConfig := dConfig.GetDashConfig("/srv/www/" + j + "/" + current_rev + "/")
 		RunNewRev(j, current_rev, dashConfig)
 	}
+
+	// start health check
+	go HealthCheck()
 
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		r := types.Response{}

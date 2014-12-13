@@ -140,6 +140,25 @@ func Add() {
 	CreatePostRecieveHook(project, branch)
 	// create default revision
 	CreateDefaultRevision(project, branch)
+	default_rev_path := "/srv/www/" + project + "/default"
+	// create branch
+	cmd = exec.Command("git", "--work-tree="+default_rev_path, "checkout", "-b", branch, "-f")
+	cmd.Dir = coral_path + "code.git"
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Run()
+	// add all files in default revision
+	cmd = exec.Command("git", "--work-tree="+default_rev_path, "add", "-A")
+	cmd.Dir = coral_path + "code.git"
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Run()
+	// do first commit
+	cmd = exec.Command("git", "--work-tree="+default_rev_path, "commit", "-m", "First deploy")
+	cmd.Dir = coral_path + "code.git"
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Run()
 
 	CreateNginxSiteConf(project)
 
