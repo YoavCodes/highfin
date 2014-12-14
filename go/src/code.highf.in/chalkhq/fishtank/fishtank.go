@@ -97,14 +97,13 @@ func main() {
 func gracefulShutdown() {
 	sig_chan := make(chan os.Signal, 1)
 	// signal will be caught when killing from top or manually from guppy on filechange
-	signal.Notify(sig_chan, syscall.SIGTERM) // listen for TERM signal
+	signal.Notify(sig_chan, syscall.SIGINT) // listen for TERM signal
 	go func() {
-		fmt.Println("waiting for kill signal...")
+		//fmt.Println("waiting for kill signal...")
 
 		// wait for signal
-		//signal.Notify(sig_chan, syscall.SIGKILL)
-		sig := <-sig_chan
-		fmt.Println("Got signal:", sig)
+		<-sig_chan
+		fmt.Println("fishtnak shutting down...")
 		// kill all project execs
 		for i := range data.Projects {
 			for j := range data.Projects[i].Revisions {
@@ -112,17 +111,13 @@ func gracefulShutdown() {
 				for k := range revision.cmds {
 					cmd := revision.cmds[k]
 
-					cmd.Process.Signal(syscall.SIGTERM)
+					cmd.Process.Signal(syscall.SIGINT)
 
-					go func(cmd *exec.Cmd) {
-						time.Sleep(300 * time.Millisecond)
-						cmd.Process.Kill()
-					}(cmd)
 				}
 			}
 		}
-		time.Sleep(300 * time.Millisecond)
-		fmt.Println("finished cleanin up")
+
+		//fmt.Println("finished cleanin up")
 
 		os.Exit(0)
 	}()

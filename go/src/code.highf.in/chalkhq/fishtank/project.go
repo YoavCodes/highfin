@@ -125,11 +125,8 @@ func Add() {
 	_ = exec.Command("mkdir", "-p", "/srv/www/"+project).Run()
 
 	_ = exec.Command("mkdir", "-p", coral_path+"/data").Run()
-	_ = exec.Command("chown", project+":"+project, coral_path+"/data").Run()
 
 	_ = exec.Command("touch", "/etc/nginx/sites-enabled/"+project+".conf").Run()
-
-	_ = exec.Command("chown", project_user+":"+project_user, "/etc/nginx/sites-enabled/"+project+".conf").Run()
 
 	cmd := exec.Command("git", "init", "--bare")
 	cmd.Dir = coral_path + "/code.git"
@@ -166,6 +163,7 @@ func Add() {
 
 	AddKey(project, key)
 
+	_ = exec.Command("chown", project_user+":"+project_user, "/etc/nginx/sites-enabled/"+project+".conf").Run()
 	_ = exec.Command("chown", "-R", project_user+":"+project_user, coral_path).Run()
 	_ = exec.Command("chown", "-R", project_user+":"+project_user, "/srv/www/"+project).Run()
 

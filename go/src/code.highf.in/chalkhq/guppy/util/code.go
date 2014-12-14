@@ -151,20 +151,9 @@ func runApp(app config.App) {
 		// todo: should check to see if process is still running first
 		if cmds[i] != nil {
 			// give process a chance to gracefully shutdown
-			// we want to send all the sigterms asap and then give it half a second to shutdown
-			cmds[i].Process.Signal(syscall.SIGTERM)
-			cmd := cmds[i]
-			go func(cmd *exec.Cmd) {
-				// note: i will exist in scope, but it's value would be changed by the for loop by the time this executes
-				// note: fishtank only needs around <40 ms to terminate gracefully. 200 should give more than enough headroom
-				// and still be snappy for the user.
-				time.Sleep(400 * time.Millisecond)
-				cmd.Process.Kill()
-			}(cmd)
+			cmds[i].Process.Signal(syscall.SIGINT)
 		}
 	}
-	// let all the sigterm delays expire and proccesses Kill()ed before continuing
-	time.Sleep(400 * time.Millisecond)
 	// find a better way to get the real number of execs including grunt processes
 	cmds = make([]*exec.Cmd, len(app.Execs))
 

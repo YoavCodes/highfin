@@ -104,6 +104,10 @@ func PostReceive(project string, old_rev string, new_rev string, branch string) 
 	cmd_git.Stderr = os.Stderr
 	cmd_git.Run()
 
+	// symlink the data directory into the new revision
+	_ = exec.Command("rm", "-R", new_rev_path+"/data").Run()
+	_ = exec.Command("ln", "-s", "/srv/coral/"+project+"/data", new_rev_path+"/data").Run()
+
 	dashConfig := dConfig.GetDashConfig(new_rev_path + "/")
 
 	_ = command.E("mkdir -p " + new_rev_path).Run()
@@ -168,7 +172,7 @@ func PostReceive(project string, old_rev string, new_rev string, branch string) 
 
 	proj.Unlock()
 	// cleanup old rev
-	_ = command.E("rm -R " + old_rev_path)
+	_ = command.E("rm -R " + old_rev_path).Run()
 
 	// go restricts map property assignments. workaround
 	p := data.Projects[project]
