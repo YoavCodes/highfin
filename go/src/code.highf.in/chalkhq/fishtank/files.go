@@ -241,6 +241,62 @@ func CreateDefaultRevision(project string, branch string) {
 	fmt.Println("Default site created")
 }
 
+func CreateFishtankDefault() {
+	default_path := "/srv/www/fishtank/default"
+	_ = exec.Command("mkdir", "-p", default_path).Run()
+	file := default_path + "/index.html"
+
+	conf, err := os.Create(file)
+	defer conf.Close()
+
+	if err != nil {
+		fmt.Println("error: " + err.Error())
+		return
+	}
+
+	contents := `` +
+		`<!DOCTYPE html>
+	<html>
+	<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	<title>fishtank</title>
+	</head>
+
+	<style type="text/css">
+	*, html, body {
+		background-color: #222;	
+	}
+
+	#message {
+		width: 800px;
+		margin: 40px 0 0 140px;;	
+		font-family:Helvetica, Arial, sans-serif;
+		font-size: 60px;
+		font-weight: bold;
+		color: #fff;
+	}
+
+	.grey {
+		color: #666;	
+		font-size: 12px;
+	}
+	</style>
+
+	<body>
+
+	<div id="message">
+	<p>Fishtank <span class="grey">Welcome to Fishtank, run "fishtank add" to create your first project</span></p>
+	</div>
+
+
+	</body>
+	</html>
+	`
+
+	conf.WriteString(contents)
+	fmt.Println("Default site created")
+}
+
 func CreateNginxSiteConf(project string) {
 	file := "/etc/nginx/sites-enabled/" + project + ".conf"
 

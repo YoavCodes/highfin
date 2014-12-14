@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -149,14 +150,23 @@ func runApp(app config.App) {
 	for i := 0; i < len(cmds); i++ {
 		// todo: should check to see if process is still running first
 		if cmds[i] != nil {
-			_, process_name := filepath.Split(cmds[i].Path)
-			log.Log("killing " + process_name)
-			cmds[i].Process.Kill()
+			// give process a chance to gracefully shutdown
+			// we want to send all the sigterms asap and then give it half a second to shutdown
+			cmds[i].Process.Signal(syscall.SIGTERM)
+			cmd := cmds[i]
+			go func(cmd *exec.Cmd) {
+				// note: i will exist in scope, but it's value would be changed by the for loop by the time this executes
+				// note: fishtank only needs around <40 ms to terminate gracefully. 200 should give more than enough headroom
+				// and still be snappy for the user.
+				time.Sleep(400 * time.Millisecond)
+				cmd.Process.Kill()
+			}(cmd)
 		}
 	}
-	// todo: each exec can have a grunt process, multiplying by two is a bit indeterministic
+	// let all the sigterm delays expire and proccesses Kill()ed before continuing
+	time.Sleep(400 * time.Millisecond)
 	// find a better way to get the real number of execs including grunt processes
-	cmds = make([]*exec.Cmd, len(app.Execs)*2)
+	cmds = make([]*exec.Cmd, len(app.Execs))
 
 	for i := 0; i < len(app.Execs); i++ {
 		appPart := app.Execs[i]
@@ -178,15 +188,18 @@ func runApp(app config.App) {
 			golang.Run()
 
 		case "nodejs":
-			if appPart.GruntDirectory != "" {
-				log.Log("Running grunt..")
-				grunt := command.E(nodejs.BinPath(appPart.Version) + ` ` + nodejs.GruntPath(appPart.Version) + ` dev`)
-				gruntpath, _ := filepath.Abs(dashConfig.BasePath + `/` + appPart.GruntDirectory)
-				grunt.Dir = gruntpath
-				cmds[i] = grunt
-				go grunt.Run()
-				i++
-			}
+			/*
+				// disable executing grunt for now.
+				// note: required cmds = make() up there to make room for the grunt cmds
+				if appPart.GruntDirectory != "" {
+					log.Log("Running grunt..")
+					grunt := command.E(nodejs.BinPath(appPart.Version) + ` ` + nodejs.GruntPath(appPart.Version) + ` dev`)
+					gruntpath, _ := filepath.Abs(dashConfig.BasePath + `/` + appPart.GruntDirectory)
+					grunt.Dir = gruntpath
+					cmds[i] = grunt
+					go grunt.Run()
+					i++
+				}*/
 			runJasmine(appPart)
 			log.Log("Running nodejs..")
 			nodejs.InstallNode(appPart.Version)

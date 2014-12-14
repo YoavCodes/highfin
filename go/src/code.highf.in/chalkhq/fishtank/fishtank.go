@@ -10,8 +10,10 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -44,12 +46,11 @@ var data Data
 
 var config Config
 
-func init() {
-	checkInstalledVersion()
-}
-
 // Fishtank is a single-server CD manager
 func main() {
+
+	go gracefulShutdown()
+	checkInstalledVersion()
 
 	persistence.GetData(&data, DATA_JSON)
 	//go persistence.PersistData(&data, DATA_JSON, &projectsChanged)
@@ -91,6 +92,40 @@ func main() {
 		}
 
 	}
+}
+
+func gracefulShutdown() {
+	sig_chan := make(chan os.Signal, 1)
+	// signal will be caught when killing from top or manually from guppy on filechange
+	signal.Notify(sig_chan, syscall.SIGTERM) // listen for TERM signal
+	go func() {
+		fmt.Println("waiting for kill signal...")
+
+		// wait for signal
+		//signal.Notify(sig_chan, syscall.SIGKILL)
+		sig := <-sig_chan
+		fmt.Println("Got signal:", sig)
+		// kill all project execs
+		for i := range data.Projects {
+			for j := range data.Projects[i].Revisions {
+				revision := data.Projects[i].Revisions[j]
+				for k := range revision.cmds {
+					cmd := revision.cmds[k]
+
+					cmd.Process.Signal(syscall.SIGTERM)
+
+					go func(cmd *exec.Cmd) {
+						time.Sleep(300 * time.Millisecond)
+						cmd.Process.Kill()
+					}(cmd)
+				}
+			}
+		}
+		time.Sleep(300 * time.Millisecond)
+		fmt.Println("finished cleanin up")
+
+		os.Exit(0)
+	}()
 }
 
 func HealthCheck() {

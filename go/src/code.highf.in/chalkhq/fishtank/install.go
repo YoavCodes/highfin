@@ -27,6 +27,7 @@ func checkInstalledVersion() {
 }
 
 func Install() {
+
 	// todo: make run on boot. add line fishtank, to /etc/rc.local. make sure you only add it once.
 	fmt.Println("Installing...")
 	_ = exec.Command("mkdir", "-p", "/srv/coral/").Run()
@@ -40,10 +41,19 @@ func Install() {
 	_ = exec.Command("touch", "/etc/fishtank/data.json").Run()
 	//_ = exec.Command("chmod", "ug+x", "-R", "/usr/local/n").Run()
 
+	// create default fishtank static content. for when there are no projects
+	_ = exec.Command("mkdir", "-p", "/srv/www/fishtank/").Run()
+	CreateFishtankDefault()
+
+	CreateNginxSiteConf("fishtank")
+
 	// install nginx
 	_ = exec.Command("apt-get", "install", "nginx", "-y").Run()
 
 	_ = exec.Command("nginx").Run()
+
+	// if nginx was already installed and running make sure it reloads it's configuration data.
+	_ = exec.Command("nginx", "-s", "reload").Run()
 
 	CreateStartupScript()
 	_ = exec.Command("chmod", "ugo+x", "/etc/init.d/fishtank").Run()
@@ -74,6 +84,7 @@ func Install() {
 func Uninstall() {
 	_ = exec.Command("update-rc.d", "-f", "fishtank", "remove").Run() //  remove startup script
 	_ = exec.Command("rm", "-R", "/etc/init.d/fishtank").Run()
+	_ = exec.Command("rm", "-R", "/etc/nginx/sites-enabled/fishtank.conf").Run()
 
 	_ = exec.Command("rm", "-R", "/srv/coral/").Run()
 	_ = exec.Command("rm", "-R", "/srv/www/").Run()
@@ -83,6 +94,8 @@ func Uninstall() {
 	for j := range data.Projects {
 		_ = exec.Command("rm", "-R", "/etc/nginx/sites-enabled/"+j+".conf").Run()
 	}
+
+	_ = exec.Command("nginx", "-s", "reload").Run()
 
 	_ = exec.Command("rm", "-R", "/etc/fishtank/").Run()
 	_ = exec.Command("rm", "-R", INSTALL_PATH+"fishtank").Run()

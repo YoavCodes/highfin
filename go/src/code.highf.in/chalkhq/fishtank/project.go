@@ -175,6 +175,8 @@ func Add() {
 		AddProject(project, branch)
 	}
 
+	_ = exec.Command("nginx", "-s", "reload").Run()
+
 	fmt.Println("Project succesfully created")
 }
 
