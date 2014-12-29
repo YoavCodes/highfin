@@ -273,26 +273,35 @@ func runJasmine(appPart config.Exec) {
 }
 
 func NpmInstall() {
-	// godep go install code.highf.in/chalkhq/highfin
 	dashConfig = config.GetDashConfig("./")
-	if app, ok := dashConfig.Apps[os.Args[2]]; ok == true {
-		for i := 0; i < len(app.Execs); i++ {
-			appPart := app.Execs[i]
-			switch appPart.Lang {
-			case "nodejs":
-				for i := range appPart.Npm {
-					path := dashConfig.BasePath + `/` + appPart.Npm[i]
-					err := command.E(nodejs.NpmPath(appPart.Version) + ` --prefix ` + path + ` install ` + path).Run()
-					if err != nil {
-						log.Log(`failed to npm install ` + path)
-					}
-
-				}
-			}
+	if len(os.Args) > 2 {
+		if app, ok := dashConfig.Apps[os.Args[2]]; ok == true {
+			npmInstall(app)
+		} else {
+			log.Log(`App "` + os.Args[2] + `" is not declared in -.json`)
+			return
 		}
 	} else {
-		log.Log(`App "` + os.Args[2] + `" is not declared in -.json`)
-		return
+		for j := range dashConfig.Apps {
+			app := dashConfig.Apps[j]
+			npmInstall(app)
+		}
+	}
+}
+func npmInstall(app config.App) {
+	for i := 0; i < len(app.Execs); i++ {
+		appPart := app.Execs[i]
+		switch appPart.Lang {
+		case "nodejs":
+			for i := range appPart.Npm {
+				path := dashConfig.BasePath + `/` + appPart.Npm[i]
+				err := command.E(nodejs.NpmPath(appPart.Version) + ` --prefix ` + path + ` install ` + path).Run()
+				if err != nil {
+					log.Log(`failed to npm install ` + path)
+				}
+
+			}
+		}
 	}
 }
 
