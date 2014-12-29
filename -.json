@@ -2,7 +2,7 @@
 	"octopus": {
 		"exec": [{
 			"lang": "golang",
-			"version": "1.2.1",
+			"version": "1.4",
 			"main": "code.highf.in/chalkhq/octopus",
 			"watch": ["./go/src/code.highf.in/chalkhq/octopus", "./go/src/code.highf.in/chalkhq/shared"],
 			"instances": ["1:80"]
@@ -12,7 +12,7 @@
 	"post-receive": {
 		"exec": [{
 			"lang": "golang",
-			"version": "1.2.1",
+			"version": "1.4",
 			"main": "code.highf.in/chalkhq/post-receive",
 			"watch": ["./go/src/code.highf.in/chalkhq/post-receive"],
 			"instance": ["1:80"]
@@ -22,7 +22,7 @@
 	"squid": {
 		"exec": [{
 			"lang": "golang",
-			"version": "1.2.1",
+			"version": "1.4",
 			"main": "code.highf.in/chalkhq/squid",
 			"watch": ["./go/src/code.highf.in/chalkhq/squid", "./go/src/code.highf.in/chalkhq/shared"],
 			"instances": ["1:80"]
@@ -32,7 +32,7 @@
 	"shark": {
 		"exec": [{
 			"lang": "golang",
-			"version": "1.2.1",
+			"version": "1.4",
 			"main": "code.highf.in/chalkhq/shark",
 			"watch": ["./go/src/code.highf.in/chalkhq/shark"],
 			"instances": ["1:80"]
@@ -42,7 +42,7 @@
 	"jellyfish": {
 		"exec": [{
 			"lang": "golang",
-			"version": "1.2.1",
+			"version": "1.4",
 			"main": "code.highf.in/chalkhq/jellyfish",
 			"watch": ["./go/src/code.highf.in/chalkhq/jellyfish"],
 			"instance": ["1:80"]
@@ -52,7 +52,7 @@
 	"guppy": {
 		"exec": [{
 			"lang": "golang",
-			"version": "1.2.1",
+			"version": "1.4",
 			"main": "code.highf.in/chalkhq/guppy",
 			"watch": ["./go/src/code.highf.in/chalkhq/guppy", "./go/src/code.highf.in/chalkhq/shared"],
 			"instances": ["1:80"]
