@@ -31,6 +31,7 @@ if [ ! -e /vagrant/lib/go${GO_VERSION}.linux-amd64.tar.gz  ]; then
 fi
 
 tar -C /usr/local -xzf /vagrant/lib/go${GO_VERSION}.linux-amd64.tar.gz 
+# tar -C /usr/local -xzf /vagrant/lib/go1.4.linux-amd64.tar.gz 
 
 
 #note: guppy should install and run whichever version is stipulated in -.json file
