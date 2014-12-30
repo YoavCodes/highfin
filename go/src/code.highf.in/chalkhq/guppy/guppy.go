@@ -123,6 +123,16 @@ func main() {
 			log.Log(err.Error())
 		}
 
+	case "update":
+		// updates guppy to the latest version
+		// todo: should output version before and after update
+		// todo: should have a more concrete verioning/update system isntead of just downloading the latest build from github
+		cmd := exec.Command("wget", "-o", "/guppy/guppy", "https://github.com/YoavGivati/highfin/raw/master/go/bin/guppy")
+		err := cmd.Run()
+		if err != nil {
+			log.Log(err.Error())
+		}
+
 	default:
 		log.Log("Try: guppy [bootstrap, config, get, test, run, push, deploy dev-next, npm-install]")
 	}
